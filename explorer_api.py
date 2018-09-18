@@ -3,7 +3,7 @@ import threading
 from flask import request
 import os
 import time
-import open_explorer_api.api_impl as impl
+from api_impl import api as impl
 
 
 app = Flask(__name__)
@@ -883,14 +883,14 @@ def get_trx():
     return rst
 
 def create_instance():
-    impl_handle = impl.api()
+    impl_handle = impl()
     print('start syn...')
     impl_handle.syn_last_data()
     impl_handle.run()
 
 
 if __name__ == '__main__':
-    impl_handle = impl.api()
+    impl_handle = impl()
     t = threading.Thread(target=create_instance, args=())
     t.start()
     print("app.run")

@@ -3,7 +3,7 @@ import os
 import json
 import time
 from grapheneapi.websocket import Websocket
-from open_explorer_api.log import LogClass
+from log import LogClass
 import threading
 from datetime import datetime, date, timedelta
 import hashlib
