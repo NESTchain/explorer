@@ -94,7 +94,6 @@ from grapheneapi.websocket import Websocket
 from grapheneapi.rpc import Rpc
 def ws_database_api():
     # url = 'ws://127.0.0.1:10110'
-    # url = 'ws://74.82.223.156:11011'
     url = 'ws://10.7.0.216:11011'
     # rpc = Rpc(url)
     handle = Websocket(url)
