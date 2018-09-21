@@ -3,7 +3,7 @@ import os
 import json
 import time
 from grapheneapi.websocket import Websocket
-from log import LogClass
+from open_explorer_api.log import LogClass
 import threading
 from datetime import datetime, date, timedelta
 import hashlib
@@ -1792,49 +1792,49 @@ class api():
 
     def __get_additional_data(self, account_id, account_info):
         op_info = account_info[1]
-        fee_data = dict(amount=op_info['fee']['amount'], asset=op_info['fee']['asset_id'])
+        fee_data = dict(amount=op_info["fee"]["amount"], asset=op_info["fee"]["asset_id"])
 
         # todo :hardcode 需要改进
         account_id = account_id
-        if 'order_id' in op_info:
-            order_id = op_info['order_id']
+        if "order" in op_info:
+            order_id = op_info["order"]
         else:
             order_id = '0.0.0'
-        if 'is_make' in op_info:
-            is_maker = op_info['is_maker']
+        if "is_make" in op_info:
+            is_maker = op_info["is_maker"]
         else:
-            is_maker = 'true'
-        if 'pays' in op_info:
-            pays_amount = op_info['pays']['amount']
-            pays_asset_id = op_info['pays']['asset_id']
-            receives_amount = op_info['receives']['amount']
-            receives_asset_id = op_info['receives']['receives_asset_id']
+            is_maker = "true"
+        if "pays" in op_info:
+            pays_amount = op_info["pays"]["amount"]
+            pays_asset_id = op_info["pays"]["asset_id"]
+            receives_amount = op_info["receives"]["amount"]
+            receives_asset_id = op_info["receives"]["receives_asset_id"]
         else:
             pays_amount = 0
-            pays_asset_id = '1.3.0'
+            pays_asset_id = "1.3.0"
             receives_amount = 0
-            receives_asset_id = '1.3.0'
+            receives_asset_id = "1.3.0"
 
-        if 'fill_price' in op_info:
-            fill_price = float(op_info['fill_price']['base']['amount']) / float(
-                op_info['fill_price']['quote']['amount'])
+        if "fill_price" in op_info:
+            fill_price = float(op_info["fill_price"]["base"]["amount"]) / float(
+                op_info["fill_price"]["quote"]["amount"])
         else:
             fill_price = 0
 
-        fill_data = dict(account_id=account_id, fill_price=fill_price, is_maker=is_maker,
+        fill_data = dict(account_id=account_id, fill_price=fill_price, is_maker=is_maker, order_id=order_id,
                          pays_amount=pays_amount, pays_asset_id=pays_asset_id,
                          receives_amount=receives_amount, receives_asset_id=receives_asset_id)
         # transfer_data = {'amount': op_info['amount']['amount'], 'asset': op_info['amount']['asset_id'],
         #                  'from': op_info['from'], 'to': op_info['to']}
-        transfer_data = {'amount': 0, 'asset': '1.3.0', 'from': '1.2.0', 'to': '1.2.0'}  # todo:从explorer返回的数据像硬编码，后面再改
+        transfer_data = {"amount": 0, "asset": "1.3.0", "from": "1.2.0", "to": "1.2.0"}  # todo:从explorer返回的数据像硬编码，后面再改
 
         addtional_data = {"fee_data": fee_data, "fill_data": fill_data, "transfer_data": transfer_data}
         return True, addtional_data
 
     def __get_operation_history(self, his_info):
-        op_info = his_info['op']
-        operation_history = {'op': op_info, 'op_in_trx': his_info['op_in_trx'], 'operation_result': his_info['result'],
-                             'trx_in_block': his_info['trx_in_block'], 'virtual_op': his_info['virtual_op']}
+        op_info = his_info["op"]
+        operation_history = {"op": json.dumps(op_info), "op_in_trx": his_info["op_in_trx"], "operation_result": str(his_info["result"]),
+                             "trx_in_block": his_info["trx_in_block"], "virtual_op": his_info["virtual_op"]}
         return True, operation_history
 
     def __get_trx_id(self, trx):
@@ -1873,7 +1873,7 @@ class api():
             block_num = ret_opts_sort[i]['block_num']
             account_id = ret_opts_sort[i]['account_id']
             ret_result, ret_objects_op = self.get_object(ath)
-            if not ret_result:
+            if not ret_result or ret_objects_op == None:
                 self.run_log.info('get_account_history_elastic err')
                 continue
 
@@ -1896,52 +1896,120 @@ class api():
                 continue
 
             operation_id_num = int(op_id.split('.')[2])
-            operation_type = operation_history['op'][0]
 
             dict_tmp = {'account_history': account_history_info, 'additional_data': additional_data,
                         'block_data': block_info, 'operation_history': operation_history,
-                        'operation_id_num': operation_id_num, 'operation_type': operation_type}
+                        'operation_id_num': operation_id_num, 'operation_type': ret_his_op['op'][0]}
 
             history_elastic.append(dict_tmp)
         return True, history_elastic
 
-    def compare_time(self, time1, time2):
-        s_time = time.mktime(time.strptime(time1, '%Y-%m-%d'))
-        e_time = time.mktime(time.strptime(time2, '%Y-%m-%d'))
-        return int(s_time) - int(e_time)
-
     def get_account_history_elastic2(self, from_date, to_date, type, agg_field, size):
-
         # 取size 个
-        count, ret_syn_db = self.get_syn_data()
+        days = from_date.split('-')[1]
+        period = days[-1]
+        days = days[0:(len(days) - 1)]
+
+        if period == 'h':
+            start_time = (datetime.now() - timedelta(hours=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+        elif period == 'd':
+            start_time = (datetime.now() - timedelta(days=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+        elif period == 'w':
+            start_time = (datetime.now() - timedelta(days=7 * int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+        else:
+            start_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+        end_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+        count = self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).count()
         if count <= 0:
             return True, []
-        sort_data = sorted(ret_syn_db, key=lambda k: k['id_index'], reverse=True)
-        days = from_date.split('-')[1]
-        days = days[0:(len(days) - 1)]
-        start_data = date.today() + timedelta(days=-int(days))
 
-        end_index = 0
-        for i in range(count):
-            time_date = sort_data[i]['datetime'].split('T')[0]
-            if self.compare_time(time_date, str(start_data)) < 0:
-                end_index = i
-                break
-            else:
-                end_index += 1
-
-        ret_sort_data = sort_data[:min(size, end_index)]
+        ret_syn_db = list(
+            self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).sort('datetime', 1).limit(count))
         list_ops = []
-        if agg_field == 'operation_type':
-            for i in range(len(ret_sort_data)):
-                list_ops = self.__static_ops(list_ops, ret_sort_data[i]['op_type'])
-        else:
-            for i in range(len(ret_sort_data)):
-                list_ops = self.__static_ops(list_ops, ret_sort_data[i]['trx_id'])
+        for i in range(len(ret_syn_db)):
+            list_ops = self.__static_ops(list_ops, ret_syn_db[i]['block_num'])
+
+        list_ops = []
+        for i in range(len(ret_syn_db)):
+            list_ops = self.__static_ops(list_ops, ret_syn_db[i]['op_type'])
         ret_data = []
         for i in range(len(list_ops)):
             ret_data.append({'doc_count': list_ops[i][1], 'key':list_ops[i][0]})
-        return True, ret_data
+
+        ret_sort_data = sorted(ret_data, key=lambda k: k['doc_count'], reverse=True)
+        ret_sort_data = ret_sort_data[0:min(size, len(ret_sort_data))]
+        return True, ret_sort_data
+
+    def get_account_history_elastic3(self, from_date, to_date, type, agg_field, size):
+        days = from_date.split('-')[1]
+        period = days[-1]
+        days = days[0:(len(days) - 1)]
+
+        if period == 'h':
+            start_time = (datetime.now() - timedelta(hours=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+        elif period == 'd':
+            start_time = (datetime.now() - timedelta(days=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+        elif period == 'w':
+            start_time = (datetime.now() - timedelta(days=7 * int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+        else:
+            start_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+        end_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+        count = self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).count()
+        if count <= 0:
+            return True, []
+
+        ret_syn_db = list(
+            self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).sort('block_num', 1).limit(count))
+        list_ops = []
+        for i in range(len(ret_syn_db)):
+            list_ops = self.__static_ops(list_ops, ret_syn_db[i]['block_num'])
+
+        ret_data = []
+        for i in range(len(list_ops)):
+            ret_data.append({'doc_count': list_ops[i][1], 'key': list_ops[i][0]})
+        ret_sort_data = sorted(ret_data, key=lambda k: k['doc_count'], reverse=True)
+        ret_sort_data = ret_sort_data[0:min(size, len(ret_sort_data))]
+        return True, ret_sort_data
+
+    def get_account_history_elastic4(self, from_date, to_date, type, agg_field, size):
+        days = from_date.split('-')[1]
+        period = days[-1]
+        days = days[0:(len(days) - 1)]
+
+        if period == 'h':
+            start_time = (datetime.now() - timedelta(hours=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+        elif period == 'd':
+            start_time = (datetime.now() - timedelta(days=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+        elif period == 'w':
+            start_time = (datetime.now() - timedelta(days=7 * int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+        else:
+            start_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+        end_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+        count = self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).count()
+        if count <= 0:
+            return True, []
+
+        ret_syn_db = list(
+            self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).sort('trx_id', 1).limit(
+                count))
+
+        list_ops = []
+        for i in range(len(ret_syn_db)):
+            list_ops = self.__static_ops(list_ops, ret_syn_db[i]['trx_id'])
+
+        ret_data = []
+        for i in range(len(list_ops)):
+            ret_data.append({'doc_count': list_ops[i][1], 'key': list_ops[i][0]})
+
+        ret_sort_data = sorted(ret_data, key=lambda k: k['doc_count'], reverse=True)
+        ret_sort_data = ret_sort_data[0:min(size, len(ret_sort_data))]
+        return True, ret_sort_data
 
     def get_trx(self, trx_id, size):
         count, ret_ops_data = self.get_syn_data()
@@ -1979,11 +2047,10 @@ class api():
                     continue
 
                 operation_id_num = int(op_id.split('.')[2])
-                operation_type = operation_history['op'][0]
 
                 dict_tmp = {'account_history': account_history_info, 'additional_data': additional_data,
                             'block_data': block_info, 'operation_history': operation_history,
-                            'operation_id_num': operation_id_num, 'operation_type': operation_type}
+                            'operation_id_num': operation_id_num, 'operation_type': ret_his_op['op'][0]}
 
                 history_elastic.append(dict_tmp)
         ret_trx_sorted = history_elastic[:min(size, len(history_elastic))]

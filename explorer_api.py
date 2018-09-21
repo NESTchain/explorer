@@ -3,7 +3,7 @@ import threading
 from flask import request
 import os
 import time
-from api_impl import api as impl
+import open_explorer_api.api_impl as impl
 
 
 app = Flask(__name__)
@@ -212,7 +212,7 @@ def get_operation_full_elastic():
     if not ret_result:
         ret_operation_data = []
 
-    rst = make_response(jsonify(ret_operation_data))
+    rst = make_response(jsonify([ret_operation_data]))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
     return rst
@@ -859,7 +859,12 @@ def get_account_history_elastic2():
     agg_field = request.args.get('agg_field')
     size = int(request.args.get('size'))
 
-    ret_result, ret_data = impl_handle.get_account_history_elastic2(from_date, to_date, type, agg_field, size)
+    if agg_field == 'operation_type':# 按op-type来获取op
+        ret_result, ret_data = impl_handle.get_account_history_elastic2(from_date, to_date, type, agg_field, size)
+    if agg_field == 'block_data.block_num': # todo 暂时以每个block中op最多来统计
+        ret_result, ret_data = impl_handle.get_account_history_elastic3(from_date, to_date, type, agg_field, size)
+    if agg_field == 'block_data.trx_id.keyword':# 根据每个交易的transactin中op最多数
+        ret_result, ret_data = impl_handle.get_account_history_elastic4(from_date, to_date, type, agg_field, size)
     if not ret_result:
         ret_data = []
     rst = make_response(jsonify(ret_data))
@@ -883,14 +888,14 @@ def get_trx():
     return rst
 
 def create_instance():
-    impl_handle = impl()
+    impl_handle = impl.api()
     print('start syn...')
     impl_handle.syn_last_data()
     impl_handle.run()
 
 
 if __name__ == '__main__':
-    impl_handle = impl()
+    impl_handle = impl.api()
     t = threading.Thread(target=create_instance, args=())
     t.start()
     print("app.run")
