@@ -24,7 +24,6 @@ Orders_api_id = ''
 
 import random
 
-
 class api():
     def __init__(self):
         self.__TESTNET = 0  # todo:放入配置文件
@@ -36,6 +35,10 @@ class api():
 
         self.msg_id = 0
         self.lock = threading.Lock()
+        self.lock_asset_rd = threading.Lock()
+        self.lock_account_rd = threading.Lock()
+        self.lock_temple = threading.Lock()
+        self.lock_obj = threading.Lock()
         self.__block_handle = ''
         self.__blockchain_init()
 
@@ -58,6 +61,12 @@ class api():
 
         table = 'syndb'
         self.__db_syn = dbClient[table_base][table]
+
+        table = 'witness'
+        self.__db_witness = dbClient[table_base][table]
+
+        table = 'committee'
+        self.__db_committee = dbClient[table_base][table]
 
     def __blockchain_init(self):
         fileName = 'host_info.json'
@@ -183,22 +192,27 @@ class api():
         return len(str.split(".")) == 3
 
     def __get_request_temple(self, api_id, method_fun, params):
+        self.lock_temple.acquire()
         msg_id = self.__get_msg_id()
         try:
             pay_load = {"id": msg_id, "method": "call", "params": [api_id, method_fun, params]}
             ret = self.__block_handle.rpcexec(pay_load)
             # print(ret)
             ret_orgin_data = json.loads(ret)
+            ret_result = ret_orgin_data['result']
         except:
             self.run_log.info("fun %s err" % method_fun)
+            self.lock_temple.release()
             return False, {}
         if 'error' in ret_orgin_data:
             self.run_log.info("{} err, msg:{}".format(method_fun, ret_orgin_data))
+            self.lock_temple.release()
             return False, {}
-        ret_result = ret_orgin_data['result']
+        self.lock_temple.release()
         return True, ret_result
 
     def __get_block_assert(self, asset_id):
+        self.lock_asset_rd.acquire()
         msg_id = self.__get_msg_id()
         method_fun = 'lookup_asset_symbols'
         try:
@@ -212,29 +226,36 @@ class api():
                 ret = self.__block_handle.rpcexec(pay_load)
                 # print(ret)
             ret_orgin_data = json.loads(ret)
+            ret_list_account = ret_orgin_data['result'][0]
         except:
             self.run_log.info("fun list_assets err")
+            self.lock_asset_rd.release()
             return False, {}
         if 'error' in ret_orgin_data:
             self.run_log("lookup_asset_symbols, err, msg:" % ret_orgin_data)
+            self.lock_asset_rd.release()
             return False, {}
-        # print(ret_orgin_data)
-        ret_list_account = ret_orgin_data['result'][0]
 
-        ret_result, dynamic_asset_data = self.get_object(ret_list_account["dynamic_asset_data_id"])
-        if not ret_result:
-            return ret_result, dynamic_asset_data
-        ret_list_account["current_supply"] = dynamic_asset_data["current_supply"]
-        ret_list_account["confidential_supply"] = dynamic_asset_data["confidential_supply"]
-        ret_list_account["accumulated_fees"] = dynamic_asset_data["accumulated_fees"]
-        ret_list_account["fee_pool"] = dynamic_asset_data["fee_pool"]
+        try:
+            ret_result, dynamic_asset_data = self.get_object(ret_list_account["dynamic_asset_data_id"])
+            if not ret_result:
+                return ret_result, dynamic_asset_data
+            ret_list_account["current_supply"] = dynamic_asset_data["current_supply"]
+            ret_list_account["confidential_supply"] = dynamic_asset_data["confidential_supply"]
+            ret_list_account["accumulated_fees"] = dynamic_asset_data["accumulated_fees"]
+            ret_list_account["fee_pool"] = dynamic_asset_data["fee_pool"]
 
-        ret_result, issuer = self.get_object(ret_list_account["issuer"])
-        if not ret_result:
-            return ret_result, issuer
-        ret_list_account["issuer_name"] = issuer["name"]
-
-        return True, ret_list_account
+            ret_result, issuer = self.get_object(ret_list_account["issuer"])
+            if not ret_result:
+                self.lock_asset_rd.release()
+                return ret_result, issuer
+            ret_list_account["issuer_name"] = issuer["name"]
+            ret_data = ret_list_account
+        except:
+            self.lock_asset_rd.release()
+            return False, {}
+        self.lock_asset_rd.release()
+        return True, ret_data
 
     def __import_assert(self):
         all_asset = []
@@ -580,7 +601,6 @@ class api():
             index = sort_data[0]['id_index'] + 1
             self.__id_index = index + 1
         if self.__first_syn:
-            index = 0
             self.__first_syn = False
         if self.__syn_data_to_db(index):
             print('finish syn')
@@ -618,17 +638,21 @@ class api():
             if not ret_result:
                 self.run_log.info('__import_operation err')
                 continue
-            datetime = ret_block_data['timestamp']
+
+            date_time = ret_block_data['timestamp']
             transaction = ret_block_data['transactions'][trx_in_block]
 
             ripemd = hashlib.new("ripemd160")
             ripemd.update(json.dumps(transaction).encode('utf-8'))
             hash160 = ripemd.hexdigest()
 
+            timestamp = int(datetime.strptime(date_time, "%Y-%m-%dT%H:%M:%S").timestamp())
+
             db_data = {
                 'account_id': account_id, 'oh': id, 'next': next_id, 'op_type': op_type, 'block_num': block_num,
                 'op_in_trx': op_in_trx, 'trx_in_block': trx_in_block, 'operation_id': operation_id,
-                'datetime': datetime, 'sequence': sequence, 'trx_id': hash160, 'id_index': i + start_index
+                'datetime': date_time, 'sequence': sequence, 'trx_id': hash160, 'id_index': i + start_index,
+                'timestamp': timestamp
             }
             if not self.__db_syn.find_one({'oh': id}):
                 self.__db_syn.insert(db_data)
@@ -640,28 +664,137 @@ class api():
 
     def get_syn_data(self):
         try:
-            count = self.__db_syn.find().count()
-            referres_data = list(self.__db_syn.find().limit(count))
+            count = self.__db_syn.find().sort("block_num", -1).count()
+            if count > 3000:
+                count = 3000
+            referres_data = list(self.__db_syn.find().sort("block_num", -1).limit(count))
         except:
             count = 0
             referres_data = {}
+        for i in range(count):
+            referres_data[i].pop("timestamp")
         return count, referres_data
+
+    def __import_witnesses(self):
+        msg_id = self.__get_msg_id()
+        method_fun = 'get_witness_count'
+        try:
+            pay_load = {"id": msg_id, "method": "call", "params": [Database_api_id, method_fun, []]}
+            ret = self.__block_handle.rpcexec(pay_load)
+            ret_orgin_data = json.loads(ret)
+            witnesses_count = ret_orgin_data['result']
+        except:
+            self.run_log.info("fun get_witnesses err")
+            return False, []
+
+        try:
+            wit_count = int(witnesses_count)
+        except:
+            self.run_log.info("fun get_witnesses err")
+            return False, []
+        for i in range(wit_count):
+            id_ = '1.6.{}'.format(i)
+            ret_result, witness = self.get_object(id_)
+            if not ret_result or witness == None:
+                continue
+
+            msg_id = self.__get_msg_id()
+            method_fun = 'get_accounts'
+            try:
+                pay_load = {"id": msg_id, "method": "call",
+                            "params": [Database_api_id, method_fun, [[witness["witness_account"]]]]}
+                ret = self.__block_handle.rpcexec(pay_load)
+                # print(ret)
+                ret_orgin_data = json.loads(ret)
+                witness["witness_account_name"] = ret_orgin_data['result'][0]['name']
+            except Exception as e:
+                self.run_log.info("fun get_witnesses err, witness:{}".format(witness))
+                continue
+
+            if not self.__db_witness.find_one({"id": id_}):
+                self.__db_witness.insert(witness)
+            else:
+                self.__db_witness.update({'id': id_}, {'$set': witness})
+
+    def get_witnesses(self):
+        count = self.__db_witness.find().count()
+        if count <= 0:
+            return False, []
+
+        ret_wit_db = list(self.__db_witness.find().limit(count))
+        for i in range(count):
+            ret_wit_db[i].pop("_id")
+
+        ret_wit_data = sorted(ret_wit_db, key=lambda k: k['total_votes'], reverse=True)
+        return True, ret_wit_data
+
+    def __import_committee(self):
+        api_id = Database_api_id
+        method_fun = 'get_committee_count'
+        params = ['']
+        ret_result, committee_count = self.__get_request_temple(api_id, method_fun, params)
+        if not ret_result:
+            self.run_log.info("fun get_committee_count err")
+            return False, []
+
+        com_count = int(committee_count)
+        for i in range(com_count):
+            id_ = "1.5.{}".format(i)
+            ret_result, committee_member = self.get_object(id_)
+            if not ret_result:
+                continue
+
+            msg_id = self.__get_msg_id()
+            method_fun = 'get_accounts'
+            try:
+                pay_load = {"id": msg_id, "method": "call",
+                            "params": [Database_api_id, method_fun, [[committee_member["committee_member_account"]]]]}
+                ret = self.__block_handle.rpcexec(pay_load)
+                # print(ret)
+                ret_orgin_data = json.loads(ret)
+                committee_member["committee_member_account_name"] = ret_orgin_data['result'][0]['name']
+            except Exception as e:
+                self.run_log.info("fun get_committee_count err, witness:{}".format(committee_member))
+                continue
+            if not self.__db_committee.find_one({"id": id_}):
+                self.__db_committee.insert(committee_member)
+            else:
+                self.__db_committee.update({'id': id_}, {'$set': committee_member})
+
+    def get_committee_members(self):
+        count = self.__db_committee.find().count()
+        if count <= 0:
+            return False, []
+
+        ret_comm_db = list(self.__db_committee.find().limit(count))
+        for i in range(count):
+            ret_comm_db[i].pop("_id")
+
+        ret_comm_data = sorted(ret_comm_db, key=lambda k: k['total_votes'], reverse=True)
+        return True, ret_comm_data
 
     def run(self):
         # time.sleep(30)
         # 写入holder资产
         while True:
-            self.__import_assert()
-            time.sleep(3)
-            self.__import_holders()
-            time.sleep(3)
-            self.__import_market()
-            time.sleep(3)
-            self.__import_referrers()
-            time.sleep(3)
-            self.__import_operation(self.__id_index)
-            time.sleep(3)
-            self.syn_last_data()
+            try:
+                self.__import_assert()
+                time.sleep(3)
+                self.__import_holders()
+                time.sleep(3)
+                self.__import_market()
+                time.sleep(3)
+                self.__import_referrers()
+                time.sleep(3)
+                self.__import_operation(self.__id_index)
+                time.sleep(3)
+                self.__import_witnesses()
+                time.sleep(3)
+                self.__import_committee()
+                time.sleep(3)
+                self.syn_last_data()
+            except:
+                continue
             if self.__get_msg_id() > 10000000:
                 self.__set_msg_id()
 
@@ -750,21 +883,25 @@ class api():
         return True, ret_data
 
     def get_object(self, object_id):
+        self.lock_obj.acquire()
         msg_id = self.__get_msg_id()
         method_fun = 'get_objects'
         try:
             pay_load = {"id": msg_id, "method": "call", "params": [Database_api_id, method_fun, [[object_id]]]}
             ret = self.__block_handle.rpcexec(pay_load)
             # print(ret)
+            ret_orgin_data = json.loads(ret)
+            ret_data = ret_orgin_data['result'][0]
         except:
-            self.run_log.info("fun get_objects err")
-            ret = {}
-            return False, json.dumps(ret)
-        ret_orgin_data = json.loads(ret)
-        if 'error' in ret_orgin_data:
-            self.run_log.info("get_object err, msg:" % ret_orgin_data)
+            self.run_log.info("fun get_objects err,id:{}".format(object_id))
+            self.lock_obj.release()
             return False, {}
-        return True, ret_orgin_data['result'][0]
+        if 'error' in ret_orgin_data:
+            self.run_log.info("get_object err, msg:{}".format(ret_orgin_data))
+            self.lock_obj.release()
+            return False, {}
+        self.lock_obj.release()
+        return True, ret_data
 
     def get_volume(self, base, quote):
         msg_id = self.__get_msg_id()
@@ -832,6 +969,7 @@ class api():
         return True, ret_orgin_data['result']
 
     def get_account_name(self, account_id):
+        self.lock_account_rd.acquire()
         msg_id = self.__get_msg_id()
         method_fun = 'get_accounts'
         try:
@@ -839,13 +977,17 @@ class api():
             ret = self.__block_handle.rpcexec(pay_load)
             # print(ret)
             ret_orgin_data = json.loads(ret)
+            ret_data = ret_orgin_data['result'][0]['name']
         except:
-            self.run_log.info("fun get_accounts err")
+            self.run_log.info("fun get_account_name err, account_id:{}".format(account_id))
+            self.lock_account_rd.release()
             return False, json.dumps(ret)
         if 'error' in ret_orgin_data:
             self.run_log.info("get_accounts err, msg:" % ret_orgin_data)
+            self.lock_account_rd.release()
             return False, {}
-        return True, ret_orgin_data['result'][0]['name']
+        self.lock_account_rd.release()
+        return True, ret_data
 
     def get_account_id(self, account_name):
         if not self.__is_object(account_name):
@@ -959,21 +1101,6 @@ class api():
     # 'operation_result': '[0,{}]', 'trx_in_block': 0, 'virtual_op': 31500}, 'operation_id_num': 0, 'operation_type': 37}]
     def get_operation_full_elastic(self, operation_id):
         return self.get_operation(operation_id)
-        # ret_result, ret_operation = self.get_operation(operation_id)
-        # if not ret_result:
-        #     return ret_result, ret_operation
-        # print(ret_operation)
-        #
-        # operation = {
-        #     "op": (ret_operation["operation_history"]["op"]),
-        #     "block_num": ret_operation["block_data"]["block_num"],
-        #     "op_in_trx": ret_operation["operation_history"]["op_in_trx"],
-        #     "result": (ret_operation["operation_history"]["operation_result"]),
-        #     "trx_in_block": ret_operation["operation_history"]["trx_in_block"],
-        #     "virtual_op": ret_operation["operation_history"]["virtual_op"],
-        #     "block_time": ret_operation["block_data"]["block_time"]
-        # }
-        # return True, operation
 
     def get_accounts(self):
         msg_id = self.__get_msg_id()
@@ -1090,10 +1217,10 @@ class api():
         ret_datas = []
         for i in range(count):
             ret_data[i].pop('_id')
-            ret_datas.append('', [ret_data[i]['oh'], ret_data[i]['ath'], ret_data[i]['block_num'],
-                                  ret_data[i]['trx_in_block'], ret_data[i]['op_in_trx'],
-                                  ret_data[i]['datetime'], ret_data[i]['account_id'], ret_data[i]['op_type'],
-                                  ret_data[i]['account_name']])
+            ret_datas.append('', ret_data[i]['oh'], ret_data[i]['ath'],
+                             ret_data[i]['block_num'],ret_data[i]['trx_in_block'],
+                             ret_data[i]['op_in_trx'], ret_data[i]['datetime'],
+                             ret_data[i]['account_id'], ret_data[i]['op_type'], ret_data[i]['account_name'])
         return True, ret_datas
 
     def __ensure_asset_id(self, asset_id):
@@ -1142,16 +1269,16 @@ class api():
             ret = self.__block_handle.rpcexec(pay_load)
             # print(ret)
             ret_orgin_data = json.loads(ret)
+            workers_count = int(ret_orgin_data['result'])
         except:
             self.run_log.info("fun get_worker_count err")
             return False, {}
         if 'error' in ret_orgin_data:
             self.run_log.info("get_worker_count err, msg:" % ret_orgin_data)
             return False, {}
-        workers_count = int(ret_orgin_data['result'])
 
         if workers_count <= 0:
-            return True, []
+            return False, []
 
         ret_objects = []
         for i in range(workers_count):
@@ -1169,9 +1296,22 @@ class api():
         result = []
         for worker in ret_objects:
             if worker:
-                ret_result, worker["worker_account_name"] = self.get_account_name(worker["worker_account"])
-                if not ret_result:
+                msg_id = self.__get_msg_id()
+                method_fun = 'get_accounts'
+                try:
+                    pay_load = {"id": msg_id, "method": "call",
+                                "params": [Database_api_id, method_fun, [[worker["worker_account"]]]]}
+                    ret = self.__block_handle.rpcexec(pay_load)
+                    # print(ret)
+                    ret_orgin_data = json.loads(ret)
+                    worker["worker_account_name"] = ret_orgin_data['result'][0]['name']
+                except:
+                    self.run_log.info("fun get_workers err")
                     continue
+                if 'error' in ret_orgin_data:
+                    self.run_log.info("get_workers err, msg:" % ret_orgin_data)
+                    continue
+
                 current_votes = int(worker["total_votes_for"])
                 perc = (current_votes * 100) / thereshold
                 worker["perc"] = perc
@@ -1214,51 +1354,75 @@ class api():
             self.run_log.info("fun get_margin_positions err")
         return True, ret_data
 
-    def get_witnesses(self):
-        api_id = Database_api_id
+    def get_witnesses_bak(self):
+        msg_id = self.__get_msg_id()
         method_fun = 'get_witness_count'
-        params = ['']
-        ret_result, witnesses_count = self.__get_request_temple(api_id, method_fun, params)
-        if not ret_result:
-            self.run_log.info("fun get_witness_count err")
+        try:
+            pay_load = {"id": msg_id, "method": "call", "params": [Database_api_id, method_fun, []]}
+            ret = self.__block_handle.rpcexec(pay_load)
+            print(msg_id, ret)
+            ret_orgin_data = json.loads(ret)
+            witnesses_count = ret_orgin_data['result']
+        except:
+            self.run_log.info("fun get_witnesses err")
+            return False, []
 
         witnesses = []
-        for i in range(0, witnesses_count):
-            api_id = Database_api_id
-            method_fun = 'get_objects'
-            params = [['1.6.{}'.format(i)]]
-            ret_result, witness = self.__get_request_temple(api_id, method_fun, params)
-            if not ret_result or witness == [None]:
+        try:
+            wit_count = int(witnesses_count)
+        except:
+            self.run_log.info("fun get_witnesses err")
+            return False, []
+        for i in range(wit_count):
+            id_ = '1.6.{}'.format(i)
+            ret_result, witness = self.get_object(id_)
+            if not ret_result or witness == None:
                 continue
             witnesses.append(witness)
 
         result = []
         for witness in witnesses:
             if witness:
-                ret_result, ret_accout_name = self.get_account_name(witness[0]["witness_account"])
-                if not ret_result:
+                msg_id = self.__get_msg_id()
+                method_fun = 'get_accounts'
+                try:
+                    pay_load = {"id": msg_id, "method": "call",
+                                "params": [Database_api_id, method_fun, [[witness[0]["witness_account"]]]]}
+                    ret = self.__block_handle.rpcexec(pay_load)
+                    # print(ret)
+                    ret_orgin_data = json.loads(ret)
+                    ret_data = ret_orgin_data['result'][0]['name']
+                except Exception as e:
+                    raise
+                    self.run_log.info("fun get_witnesses err, witness:{}".format(witness))
+                    self.run_log.info("fun get_witnesses err, ret_data:{}".format(ret))
+                    self.run_log.info("fun get_witnesses err, msg:{}".format(e))
                     continue
-                witness[0]["witness_account_name"] = ret_accout_name
+                if 'error' in ret_orgin_data:
+                    self.run_log.info("get_witnesses err, msg:" % ret_orgin_data)
+                    continue
+
+                witness[0]["witness_account_name"] = ret_data
                 result.append([witness[0]])
 
         result = sorted(result, key=lambda k: int(k[0]['total_votes']))
         result = result[::-1]  # Reverse list.
         return True, result
 
-    def get_committee_members(self):
+    def get_committee_members_bak(self):
         api_id = Database_api_id
         method_fun = 'get_committee_count'
         params = ['']
         ret_result, committee_count = self.__get_request_temple(api_id, method_fun, params)
         if not ret_result:
             self.run_log.info("fun get_committee_count err")
+            return False, []
 
         committee_members = []
-        for i in range(0, committee_count):
-            api_id = Database_api_id
-            method_fun = 'get_objects'
-            params = [['1.5.{}'.format(i)]]
-            ret_result, committee_member = self.__get_request_temple(api_id, method_fun, params)
+        com_count = int(committee_count)
+        for i in range(com_count):
+            id_ = "1.5.{}".format(i)
+            ret_result, committee_member = self.get_object(id_)
             if not ret_result:
                 continue
             committee_members.append(committee_member)
@@ -1266,10 +1430,23 @@ class api():
         result = []
         for committee_member in committee_members:
             if committee_member:
-                ret_result, ret_accout_name = self.get_account_name(committee_member[0]["committee_member_account"])
-                if not ret_result:
+                msg_id = self.__get_msg_id()
+                method_fun = 'get_accounts'
+                try:
+                    pay_load = {"id": msg_id, "method": "call",
+                                "params": [Database_api_id, method_fun, [[committee_member[0]["committee_member_account"]]]]}
+                    ret = self.__block_handle.rpcexec(pay_load)
+                    # print(ret)
+                    ret_orgin_data = json.loads(ret)
+                    ret_data = ret_orgin_data['result'][0]['name']
+                except:
+                    self.run_log.info("fun get_committee_members err, committee:{}".format(committee_member))
                     continue
-                committee_member[0]["committee_member_account_name"] = ret_accout_name
+                if 'error' in ret_orgin_data:
+                    self.run_log.info("get_committee_members err, msg:" % ret_orgin_data)
+                    continue
+
+                committee_member[0]["committee_member_account_name"] = ret_data
                 result.append([committee_member[0]])
 
         result = sorted(result, key=lambda k: int(k[0]['total_votes']))
@@ -1560,34 +1737,48 @@ class api():
             return False, []
 
     def get_account_history_pager_elastic(self, account_id, page):
-        ret_result, account_id = self.get_account_id(account_id)
-        if not ret_result:
-            return ret_result, account_id
+        count = self.__db_syn.find({"account_id": account_id}).sort("id_index", -1).count()
+        if count <= 0:
+            return False, []
+        page_count = int(page) * 20
+        if page_count < 3000:
+            count = 3000
+        else:
+            if page_count < count:
+                count = page_count
+            else:
+                return True, []
 
-        from_ = int(page) * 20
-        ret_result, ret_his_data = self.get_account_history_pager(account_id, from_)
-        if not ret_result:
-            return ret_result, ret_his_data
+        ret_db = list(self.__db_syn.find({"account_id": account_id}).sort("id_index", -1).limit(count))
 
-        j = ret_his_data
-        # contents = urllib2.urlopen(
-        #     config.ES_WRAPPER + "/get_account_history?account_id=" + account_id + "&from_=" + str(
-        #         from_) + "&size=20&sort_by=-block_data.block_time").read()
+        ret_filter_data = []
+        ret_sort_db = sorted(ret_db, key=lambda k:k["id_index"], reverse=True)
+        for i in range(len(ret_sort_db) - 1):
+            if ret_sort_db[i]["operation_id"] != ret_sort_db[i + 1]["operation_id"]:
+                ret_filter_data.append(ret_sort_db[i])
+            else:
+                continue
 
+        ret_filter_data = sorted(ret_filter_data, key=lambda k:k['timestamp'], reverse=True)
+        ret_filter_data = ret_filter_data[page_count:page_count + min(20, count - page_count)]
+        results = []
+        for i in range(len(ret_filter_data)):
+            block_num = ret_filter_data[i]["block_num"]
+            id = ret_filter_data[i]["operation_id"]
+            timestamp = ret_filter_data[i]["datetime"]
 
-        results = [0 for x in range(len(j))]
-        for n in range(0, len(j)):
-            results[n] = {"op": j[n]["operation_history"]["op"],
-                          "block_num": j[n]["block_data"]["block_num"],
-                          "id": j[n]["account_history"]["operation_id"],
-                          "op_in_trx": j[n]["operation_history"]["op_in_trx"],
-                          "result": j[n]["operation_history"]["operation_result"],
-                          "timestamp": j[n]["block_data"]["block_time"],
-                          "trx_in_block": j[n]["operation_history"]["trx_in_block"],
-                          "virtual_op": j[n]["operation_history"]["virtual_op"]
-                          }
+            ret_result, ret_objects_op = self.get_object(id)
+            if not ret_result or ret_objects_op == None:
+                self.run_log.info('get_account_history_pager_elastic err')
+                continue
 
-        return True, list(results)
+            ret_result, operation_history = self.__get_operation_history(ret_objects_op)
+            operation_history['op'] = ret_objects_op['op']
+            operation_history["block_num"] = block_num
+            operation_history["id"] = id
+            operation_history["timestamp"] = timestamp
+            results.append(operation_history)
+        return True, results
 
     def get_limit_orders(self, base, quote):
         api_id = Database_api_id
@@ -1727,6 +1918,7 @@ class api():
         for i in range(count):
             if ret_ref_data[i]['referrer'] == account_id:
                 ret_ref_data[i].pop('_id')
+                ret_ref_data[i]['db_index'] = i
                 ref_datas.append(ret_ref_data[i])
 
         offset = int(page) * 20
@@ -1737,13 +1929,13 @@ class api():
             if offset > len(ref_datas):
                 return True, []
             else:
-                for i in range(20):
-                    results = ['', ref_datas[offset + i]['account_id'], ref_datas[offset + i]['account_name'],
+                count = min(len(ref_datas) - offset, 20)
+                for i in range(count):
+                    result = [ref_datas[offset + i]['db_index'], ref_datas[offset + i]['account_id'], ref_datas[offset + i]['account_name'],
                                ref_datas[offset + i]['lifetime_referrer'],
                                ref_datas[offset + i]['lifetime_referrer_fee_percentage'],
                                ref_datas[offset + i]['referrer'], ref_datas[offset + i]['referrer_rewards_percentage']]
-                    if (offset + i + 1) >= len(ref_datas):
-                        break
+                    results.append(result)
                 return True, results
 
     def get_grouped_limit_orders(self, base, quote, group=10, limit=False):
@@ -1862,10 +2054,19 @@ class api():
     def get_account_history_elastic(self, size, start):
         count, ret_ops_data = self.get_syn_data()
         if count <= 0:
-            return count, []
+            return False, []
 
-        ret_opts_sort = sorted(ret_ops_data, key=lambda k: k['id_index'], reverse=True)
-        ret_opts_sort = ret_opts_sort[start:min(size, count)]
+        ret_filter_data = []
+        ret_op_sort = sorted(ret_ops_data, key=lambda k: k['id_index'], reverse=True)
+        for i in range(len(ret_op_sort) - 1):
+            if ret_op_sort[i]["operation_id"] != ret_op_sort[i + 1]["operation_id"]:
+                ret_filter_data.append(ret_op_sort[i])
+            else:
+                continue
+
+        ret_opts_sort = sorted(ret_filter_data, key=lambda k: k['id_index'], reverse=True)
+
+        ret_opts_sort = ret_opts_sort[start:(start + size)]
         history_elastic = []
         for i in range(len(ret_opts_sort)):
             op_id = ret_opts_sort[i]['oh']
@@ -1906,12 +2107,13 @@ class api():
 
     def get_account_history_elastic2(self, from_date, to_date, type, agg_field, size):
         # 取size 个
+        print("get_account_history_elastic2, stime:{}".format(time.time()))
         days = from_date.split('-')[1]
         period = days[-1]
         days = days[0:(len(days) - 1)]
 
         if period == 'h':
-            start_time = (datetime.now() - timedelta(hours=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+            start_time = (datetime.now() - timedelta(seconds=(3600 * int(days)))).strftime("%Y-%m-%dT%H:%M:%S")
         elif period == 'd':
             start_time = (datetime.now() - timedelta(days=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
         elif period == 'w':
@@ -1921,12 +2123,17 @@ class api():
 
         end_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
-        count = self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).count()
+        start_time = int(datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S").timestamp())
+        end_time = int(datetime.strptime(end_time, "%Y-%m-%dT%H:%M:%S").timestamp())
+
+        count = self.__db_syn.find({'timestamp': {'$gte': start_time, '$lte': end_time}}).count()
         if count <= 0:
             return True, []
-
+        if count > 3000:
+            count = 3000
+        print("get_account_history_elastic2,count:{}, time:{}".format(count, int(time.time())))
         ret_syn_db = list(
-            self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).sort('datetime', 1).limit(count))
+            self.__db_syn.find({'timestamp': {'$gte': start_time, '$lte': end_time}}).sort('timestamp', -1).limit(count))
         list_ops = []
         for i in range(len(ret_syn_db)):
             list_ops = self.__static_ops(list_ops, ret_syn_db[i]['block_num'])
@@ -1940,6 +2147,7 @@ class api():
 
         ret_sort_data = sorted(ret_data, key=lambda k: k['doc_count'], reverse=True)
         ret_sort_data = ret_sort_data[0:min(size, len(ret_sort_data))]
+        print("get_account_history_elastic2, etime:{}".format(time.time()))
         return True, ret_sort_data
 
     def get_account_history_elastic3(self, from_date, to_date, type, agg_field, size):
@@ -1948,7 +2156,7 @@ class api():
         days = days[0:(len(days) - 1)]
 
         if period == 'h':
-            start_time = (datetime.now() - timedelta(hours=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+            start_time = (datetime.now() - timedelta(seconds=(3600 * int(days)))).strftime("%Y-%m-%dT%H:%M:%S")
         elif period == 'd':
             start_time = (datetime.now() - timedelta(days=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
         elif period == 'w':
@@ -1957,13 +2165,17 @@ class api():
             start_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
         end_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        start_time = int(datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S").timestamp())
+        end_time = int(datetime.strptime(end_time, "%Y-%m-%dT%H:%M:%S").timestamp())
 
-        count = self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).count()
+        count = self.__db_syn.find({'timestamp': {'$gte': start_time, '$lte': end_time}}).count()
         if count <= 0:
             return True, []
 
+        if count > 3000:
+            count = 3000
         ret_syn_db = list(
-            self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).sort('block_num', 1).limit(count))
+            self.__db_syn.find({'timestamp': {'$gte': start_time, '$lte': end_time}}).sort('block_num', -1).limit(count))
         list_ops = []
         for i in range(len(ret_syn_db)):
             list_ops = self.__static_ops(list_ops, ret_syn_db[i]['block_num'])
@@ -1976,12 +2188,13 @@ class api():
         return True, ret_sort_data
 
     def get_account_history_elastic4(self, from_date, to_date, type, agg_field, size):
+        print("get_account_history_elastic4, stime:{}".format(time.time()))
         days = from_date.split('-')[1]
         period = days[-1]
         days = days[0:(len(days) - 1)]
 
         if period == 'h':
-            start_time = (datetime.now() - timedelta(hours=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+            start_time = (datetime.now() - timedelta(seconds=(3600 * int(days)))).strftime("%Y-%m-%dT%H:%M:%S")
         elif period == 'd':
             start_time = (datetime.now() - timedelta(days=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
         elif period == 'w':
@@ -1990,16 +2203,29 @@ class api():
             start_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
         end_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        start_time = int(datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S").timestamp())
+        end_time = int(datetime.strptime(end_time, "%Y-%m-%dT%H:%M:%S").timestamp())
 
-        count = self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).count()
+        count = self.__db_syn.find({'timestamp': {'$gte': start_time, '$lte': end_time}}).count()
         if count <= 0:
             return True, []
-
+        if count > 3000:
+            count = 3000
+        print("get_account_history_elastic4,count:{}, time:{}".format(count, int(time.time())))
         ret_syn_db = list(
-            self.__db_syn.find({'datetime': {'$gte': start_time, '$lte': end_time}}).sort('trx_id', 1).limit(
+            self.__db_syn.find({'timestamp': {'$gte': start_time, '$lte': end_time}}).sort('operation_id', -1).limit(
                 count))
 
+        ret_filter_data = []
+        ret_opts_sort = sorted(ret_syn_db, key=lambda k: k['id_index'], reverse=True)
+        for i in range(len(ret_opts_sort) - 1):
+            if ret_opts_sort[i]['operation_id'] != ret_opts_sort[i + 1]['operation_id']:
+                ret_filter_data.append(ret_opts_sort[i])
+            else:
+                continue
+
         list_ops = []
+        ret_syn_db = sorted(ret_filter_data, key=lambda k: k['block_num'], reverse=True)
         for i in range(len(ret_syn_db)):
             list_ops = self.__static_ops(list_ops, ret_syn_db[i]['trx_id'])
 
@@ -2009,14 +2235,77 @@ class api():
 
         ret_sort_data = sorted(ret_data, key=lambda k: k['doc_count'], reverse=True)
         ret_sort_data = ret_sort_data[0:min(size, len(ret_sort_data))]
+        print("get_account_history_elastic4, etime:{}".format(time.time()))
         return True, ret_sort_data
 
-    def get_trx(self, trx_id, size):
+    def get_trx2(self, trx_id, size):
         count, ret_ops_data = self.get_syn_data()
         if count <= 0:
-            return count, []
+            return False, []
 
-        ret_opts_sort = sorted(ret_ops_data, key=lambda k: k['block_num'], reverse=True)
+        ret_filter_data = []
+        ret_opts_sort = sorted(ret_ops_data, key=lambda k: k['id_index'], reverse=True)
+        for i in range(len(ret_opts_sort) - 1):
+            if ret_opts_sort[i]['operation_id'] != ret_opts_sort[i + 1]['operation_id']:
+                ret_filter_data.append(ret_opts_sort[i])
+            else:
+                continue
+
+        ret_opts_sort = sorted(ret_filter_data, key=lambda k: k['block_num'], reverse=True)
+        history_elastic = []
+        for i in range(len(ret_opts_sort)):
+            if ret_opts_sort[i]['trx_id'] == trx_id:
+                op_id = ret_opts_sort[i]['oh']
+                ath = ret_opts_sort[i]['operation_id']
+                block_num = ret_opts_sort[i]['block_num']
+                account_id = ret_opts_sort[i]['account_id']
+                ret_result, ret_objects_op = self.get_object(ath)
+                if not ret_result:
+                    self.run_log.info('get_account_history_elastic err')
+                    continue
+
+                ret_his_op = ret_objects_op
+                block_info = {
+                    'block_num': block_num, 'block_time': ret_opts_sort[i]['datetime'],
+                    'trx_id': ret_opts_sort[i]['trx_id']
+                }
+
+                account_history_info = {'account': account_id, 'id': op_id, 'next': ret_opts_sort[i]['next'],
+                                        'operation_id': ath, 'sequence': ret_opts_sort[i]['sequence']}
+
+                ret_result, additional_data = self.__get_additional_data(account_id, ret_his_op['op'])
+                if not ret_result:
+                    continue
+
+                ret_result, operation_history = self.__get_operation_history(ret_his_op)
+                if not ret_result:
+                    continue
+
+                operation_id_num = int(op_id.split('.')[2])
+
+                dict_tmp = {'account_history': account_history_info, 'additional_data': additional_data,
+                            'block_data': block_info, 'operation_history': operation_history,
+                            'operation_id_num': operation_id_num, 'operation_type': ret_his_op['op'][0]}
+
+                history_elastic.append(dict_tmp)
+        ret_trx_sorted = history_elastic[:min(size, len(history_elastic))]
+        return True, ret_trx_sorted
+
+    def get_trx(self, trx_id, size):
+        count = self.__db_syn.find({"trx_id":trx_id}).count()
+        ret_trx_db = list(self.__db_syn.find({"trx_id":trx_id}).limit(count))
+        if count <= 0:
+            return True,
+        print("get_trx2, count:{}".format(count))
+        ret_trx_data = sorted(ret_trx_db, key=lambda k:k['id_index'], reverse=True)
+        ret_filter_data = []
+        for i in range(len(ret_trx_data) - 1):
+            if ret_trx_data[i]['operation_id'] == ret_trx_data[i + 1]['operation_id']:
+                ret_filter_data.append(ret_trx_data[i])
+            else:
+                continue
+
+        ret_opts_sort = sorted(ret_filter_data, key=lambda k: k['block_num'], reverse=True)
         history_elastic = []
         for i in range(len(ret_opts_sort)):
             if ret_opts_sort[i]['trx_id'] == trx_id:

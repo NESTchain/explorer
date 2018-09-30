@@ -31,18 +31,18 @@ def top_proxies():
     ret_request = []
     if count > 0:
         for i in range(count):
-            ret_data_tmp.append(float(ret_holders_data[i]['holder_reserve']))
             ret_data_tmp.append(ret_holders_data[i]['account_id'])
             ret_data_tmp.append(ret_holders_data[i]['account_name'])
             ret_data_tmp.append(float(ret_holders_data[i]['amount']))
             ret_data_tmp.append(ret_holders_data[i]['vote_account'])
+            ret_data_tmp.append(float(ret_holders_data[i]['holder_reserve']))
             ret_data.append(ret_data_tmp)
             ret_data_tmp = []
             total_amount += float(ret_holders_data[i]['amount'])
 
         for i in range(len(ret_data)):
-            ret_data[i][3] = float(ret_data[i][3] * 100 / total_amount)
-        ret_request = sorted(ret_data, key=lambda k: -k[3])
+            ret_data[i][4] = float(ret_data[i][2] * 100 / total_amount)
+        ret_request = sorted(ret_data, key=lambda k: -k[2])
     rst = make_response(jsonify(ret_request))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
@@ -58,14 +58,16 @@ def top_holders():
     ret_request = []
     if count > 0:
         for i in range(count):
+            if float(ret_holders_data[i]['amount']) <= 0:
+                continue
             ret_data_tmp.append(float(ret_holders_data[i]['holder_reserve']))
             ret_data_tmp.append(ret_holders_data[i]['account_id'])
-            ret_data_tmp.append(ret_holders_data[i]['vote_account'])
             ret_data_tmp.append(ret_holders_data[i]['account_name'])
             ret_data_tmp.append(float(ret_holders_data[i]['amount']))
+            ret_data_tmp.append(ret_holders_data[i]['vote_account'])
             ret_data.append(ret_data_tmp)
             ret_data_tmp = []
-        ret_request = sorted(ret_data, key=lambda k: k[4])
+        ret_request = sorted(ret_data, key=lambda k: k[3], reverse=True)
     rst = make_response(jsonify(ret_request))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
@@ -82,7 +84,7 @@ def top_markets():
         market_data = sorted(ret_market_data, key=lambda k: k['volume'], reverse=True)
         for i in range(min(count, 7)):
             ret_request_tmp = [market_data[i]['asset_symbol'] + '/' + market_data[i]['symbol'],
-                               market_data[i]['volume']]
+                               1000000000000000]#market_data[i]['volume']]
             ret_request.append(ret_request_tmp)
 
     rst = make_response(jsonify(ret_request))
@@ -887,8 +889,8 @@ def get_trx():
     rst.headers['Access-Control-Allow-Origin'] = header_origin
     return rst
 
+
 def create_instance():
-    impl_handle = impl.api()
     print('start syn...')
     impl_handle.syn_last_data()
     impl_handle.run()
@@ -899,5 +901,5 @@ if __name__ == '__main__':
     t = threading.Thread(target=create_instance, args=())
     t.start()
     print("app.run")
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, threaded=True)
 
