@@ -1,10 +1,9 @@
-from flask import Flask, Response, jsonify, make_response
 import threading
-from flask import request
-import os
-import time
-import open_explorer_api.api_impl as impl
 
+from flask import Flask, jsonify, make_response
+from flask import request
+
+import bitshares.open_explorer_api.api_impl as impl
 
 app = Flask(__name__)
 
@@ -75,6 +74,7 @@ def top_holders():
 
 
 @app.route('/top_markets', methods=['GET', 'POST'])
+#todo :这个接口可以考虑删除
 def top_markets():
     header_origin = request.headers['Origin']
     count, ret_market_data = impl_handle.get_market()
@@ -84,7 +84,7 @@ def top_markets():
         market_data = sorted(ret_market_data, key=lambda k: k['volume'], reverse=True)
         for i in range(min(count, 7)):
             ret_request_tmp = [market_data[i]['asset_symbol'] + '/' + market_data[i]['symbol'],
-                               1000000000000000]#market_data[i]['volume']]
+                               market_data[i]['volume']]
             ret_request.append(ret_request_tmp)
 
     rst = make_response(jsonify(ret_request))
@@ -360,13 +360,14 @@ def get_block():
 
 
 @app.route('/get_ticker', methods=['GET', 'POST'])
+# todo:未来删除这个接口
 def get_ticker():
     header_origin = request.headers['Origin']
     base = request.args.get('base')
     quote = request.args.get('quote')
-    ret_result, ret_data = impl_handle.get_ticker(base, quote)
-    if not ret_result:
-        ret_data = []
+    # ret_result, ret_data = impl_handle.get_ticker(base, quote)
+    # if not ret_result:
+    ret_data = []
 
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'
@@ -377,11 +378,11 @@ def get_ticker():
 @app.route('/get_volume', methods=['GET', 'POST'])
 def get_volume():
     header_origin = request.headers['Origin']
-    base = request.args.get('base')
-    quote = request.args.get('quote')
-    ret_result, ret_data = impl_handle.get_volume(base, quote)
-    if not ret_result:
-        ret_data = []
+    # base = request.args.get('base')
+    # quote = request.args.get('quote')
+    # ret_result, ret_data = impl_handle.get_volume(base, quote)
+    # if not ret_result:
+    ret_data = []
 
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'
@@ -494,14 +495,15 @@ def get_most_active_markets():
 
 
 @app.route('/get_order_book', methods=['GET', 'POST'])
+#todo 这个接口要删除
 def get_order_book():
     header_origin = request.headers['Origin']
-    base = request.args.get('base')
-    quote = request.args.get('quote')
-    limit = request.args.get('limit')
-    ret_result, ret_data = impl_handle.get_order_book(base, quote, limit)
-    if not ret_result:
-        ret_data = []
+    # base = request.args.get('base')
+    # quote = request.args.get('quote')
+    # limit = request.args.get('limit')
+    # ret_result, ret_data = impl_handle.get_order_book(base, quote, limit)
+    # if not ret_result:
+    ret_data = []
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
@@ -509,12 +511,13 @@ def get_order_book():
 
 
 @app.route('/get_margin_positions', methods=['GET', 'POST'])
+#todo 这个接口要删除
 def get_margin_positions():
     header_origin = request.headers['Origin']
-    account_id = request.args.get('account_id')
-    ret_result, ret_data = impl_handle.get_margin_positions(account_id)
-    if not ret_result:
-        ret_data = []
+    # account_id = request.args.get('account_id')
+    # ret_result, ret_data = impl_handle.get_margin_positions(account_id)
+    # if not ret_result:
+    ret_data = []
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
@@ -546,11 +549,12 @@ def get_committee_members():
 
 
 @app.route('/market_chart_dates', methods=['GET', 'POST'])
+#todo 可以删除
 def get_market_chart_dates():
     header_origin = request.headers['Origin']
-    ret_result, ret_data = impl_handle.get_market_chart_dates()
-    if not ret_result:
-        ret_data = []
+    # ret_result, ret_data = impl_handle.get_market_chart_dates()
+    # if not ret_result:
+    ret_data = []
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
@@ -558,6 +562,7 @@ def get_market_chart_dates():
 
 
 @app.route('/market_chart_data', methods=['GET', 'POST'])
+#todo 暂时保留
 def get_market_chart_data():
     header_origin = request.headers['Origin']
     base = request.args.get('base')
@@ -704,13 +709,14 @@ def get_account_history_pager_elastic():
 
 
 @app.route('/get_limit_orders', methods=['GET', 'POST'])
+#todo 可以删除
 def get_limit_orders():
     header_origin = request.headers['Origin']
-    base = request.args.get('base')
-    quote = request.args.get('quote')
-    ret_result, ret_data = impl_handle.get_limit_orders(base, quote)
-    if not ret_result:
-        ret_data = []
+    # base = request.args.get('base')
+    # quote = request.args.get('quote')
+    # ret_result, ret_data = impl_handle.get_limit_orders(base, quote)
+    # if not ret_result:
+    ret_data = []
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
@@ -718,12 +724,13 @@ def get_limit_orders():
 
 
 @app.route('/get_call_orders', methods=['GET', 'POST'])
+#todo 可以删除
 def get_call_orders():
     header_origin = request.headers['Origin']
-    asset_id = request.args.get('asset_id')
-    ret_result, ret_data = impl_handle.get_call_orders(asset_id)
-    if not ret_result:
-        ret_data = []
+    # asset_id = request.args.get('asset_id')
+    # ret_result, ret_data = impl_handle.get_call_orders(asset_id)
+    # if not ret_result:
+    ret_data = []
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
@@ -731,12 +738,13 @@ def get_call_orders():
 
 
 @app.route('/get_settle_orders', methods=['GET', 'POST'])
+#todo 可以删除
 def get_settle_orders():
     header_origin = request.headers['Origin']
-    base = request.args.get('base')
-    ret_result, ret_data = impl_handle.get_settle_orders(base)
-    if not ret_result:
-        ret_data = []
+    # base = request.args.get('base')
+    # ret_result, ret_data = impl_handle.get_settle_orders(base)
+    # if not ret_result:
+    ret_data = []
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
@@ -744,11 +752,12 @@ def get_settle_orders():
 
 
 @app.route('/get_dex_total_volume', methods=['GET', 'POST'])
+#todo 可以删除
 def get_dex_total_volume():
     header_origin = request.headers['Origin']
-    ret_result, ret_data = impl_handle.get_dex_total_volume()
-    if not ret_result:
-        ret_data = []
+    # ret_result, ret_data = impl_handle.get_dex_total_volume()
+    # if not ret_result:
+    ret_data = []
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
@@ -820,15 +829,16 @@ def get_all_referrers():
 
 
 @app.route('/get_grouped_limit_orders', methods=['GET', 'POST'])
+#todo 这个接口删除
 def get_grouped_limit_orders():
     header_origin = request.headers['Origin']
-    base = request.args.get('base')
-    quote = request.args.get('quote')
-    group = request.args.get('group')
-    limit = request.args.get('limit')
-    ret_result, ret_data = impl_handle.get_grouped_limit_orders(base, quote, group, limit)
-    if not ret_result:
-        ret_data = []
+    # base = request.args.get('base')
+    # quote = request.args.get('quote')
+    # group = request.args.get('group')
+    # limit = request.args.get('limit')
+    # ret_result, ret_data = impl_handle.get_grouped_limit_orders(base, quote, group, limit)
+    # if not ret_result:
+    ret_data = []
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin

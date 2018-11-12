@@ -1,12 +1,14 @@
-from pymongo import MongoClient
-import os
-import json
-import time
-from grapheneapi.websocket import Websocket
-from open_explorer_api.log import LogClass
-import threading
-from datetime import datetime, date, timedelta
 import hashlib
+import json
+import os
+import threading
+import time
+from datetime import datetime, timedelta
+
+from grapheneapi.websocket import Websocket
+from pymongo import MongoClient
+
+from bitshares.open_explorer_api.log import LogClass
 
 MONGO_HOST = os.environ.get('MONGO_HOST', '127.0.0.1')
 MONGO_PORT = os.environ.get('MONGO_PORT', 27017)
@@ -22,7 +24,6 @@ History_api_id = ''
 Asset_api_id = ''
 Orders_api_id = ''
 
-import random
 
 class api():
     def __init__(self):
@@ -81,7 +82,7 @@ class api():
         self.__block_handle = Websocket(URL)
         self.__block_handle.connect()
         if not self.__get_api_id():
-            raise "get_api_id err"
+            print("get_api_id err")
 
     def __get_msg_id(self):
         self.lock.acquire()
@@ -123,46 +124,6 @@ class api():
             except:
                 self.run_log.info("history_api err")
                 return False
-            # try:
-            #     msg_id = self.__get_msg_id()
-            #     payLoad = {"method": "call", "params": [1, "network_node", []], "id": msg_id}
-            #     ret = self.__block_handle.rpcexec(payLoad)
-            #     print("network_node_api_id:%s" % ret)
-            #     global Network_node_api_id
-            #     Network_node_api_id = json.loads(ret)['result']
-            # except:
-            #     self.run_log.info("network_node_api err")
-            #     return False
-            # try:
-            #     msg_id = self.__get_msg_id()
-            #     payLoad = {"method": "call", "params": [1, "network_broadcast", []], "id": msg_id}
-            #     ret = self.__block_handle.rpcexec(payLoad)
-            #     print("network_broadcast_api_id:%s" % ret)
-            #     global Network_broadcast_api_id
-            #     Network_broadcast_api_id = json.loads(ret)['result']
-            # except:
-            #     self.run_log.info("network_broadcast_api err")
-            #     return False
-            # try:
-            #     msg_id = self.__get_msg_id()
-            #     payLoad = {"method": "call", "params": [1, "crypto", []], "id": msg_id}
-            #     ret = self.__block_handle.rpcexec(payLoad)
-            #     print("crypto_api_id:%s" % ret)
-            #     global Crypto_api_id
-            #     Crypto_api_id = json.loads(ret)['result']
-            # except:
-            #     self.run_log.info("crypto_api err")
-            #     return False
-            # try:
-            #     msg_id = self.__get_msg_id()
-            #     payLoad = {"method": "call", "params": [1, "block", []], "id": msg_id}
-            #     ret = self.__block_handle.rpcexec(payLoad)
-            #     print("block_api_id:%s" % ret)
-            #     global Block_api_id
-            #     Block_api_id = json.loads(ret)['result']
-            # except:
-            #     self.run_log.info("block_api err")
-            #     return False
             try:
                 msg_id = self.__get_msg_id()
                 payLoad = {"method": "call", "params": [1, "asset", []], "id": msg_id}
@@ -211,7 +172,7 @@ class api():
         self.lock_temple.release()
         return True, ret_result
 
-    def __get_block_assert(self, asset_id):
+    def __get_block_asset(self, asset_id):
         self.lock_asset_rd.acquire()
         msg_id = self.__get_msg_id()
         method_fun = 'lookup_asset_symbols'
@@ -257,7 +218,7 @@ class api():
         self.lock_asset_rd.release()
         return True, ret_data
 
-    def __import_assert(self):
+    def __import_asset(self):
         all_asset = []
         msg_id = self.__get_msg_id()
         method_fun = 'list_assets'
@@ -282,7 +243,7 @@ class api():
             symbol = all_asset[i]['symbol']
             id_ = all_asset[i]['id']
 
-            ret_result, ret_get_asset = self.__get_block_assert(id_)
+            ret_result, ret_get_asset = self.__get_block_asset(id_)
             if not ret_result:
                 return ret_result, ret_get_asset
             current_supply = ret_get_asset["current_supply"]
@@ -299,27 +260,30 @@ class api():
             else:
                 type_ = "User Issued"
 
-            ret_result, ret_get_volume = self.get_volume('BTS', symbol)
-            if not ret_result:
-                return ret_result, ret_asset_holders_count
+            # ret_result, ret_get_volume = self.get_volume('BTS', symbol)
+            # if not ret_result:
+            #     return ret_result, ret_asset_holders_count
+            volume = 0
 
             # print symbol
             # print(ret_get_volume["quote_volume"])
 
-            ret_result, ret_get_ticker = self.get_ticker('BTS', symbol)
-            if not ret_result:
-                # return ret_result, ret_get_ticker
-                price = 0
-                mcap = 0
-            else:
-                price = ret_get_ticker["latest"]
-                mcap = int(current_supply) * float(price)
+            # ret_result, ret_get_ticker = self.get_ticker('BTS', symbol)
+            # if not ret_result:
+            #     # return ret_result, ret_get_ticker
+            #     price = 0
+            #     mcap = 0
+            # else:
+            #     price = ret_get_ticker["latest"]
+            #     mcap = int(current_supply) * float(price)
+            price = 0
+            mcap = 0
 
             if str(price) == 'inf':
                 continue
 
             db_data = {
-                'aname': symbol, 'aid': id_, 'price': price, 'volume': float(ret_get_volume['base_volume']),
+                'aname': symbol, 'aid': id_, 'price': price, 'volume': volume,
                 'mcap': str(mcap), 'type': type_, 'current_supply': str(current_supply),
                 'holders': str(ret_asset_holders_count), 'wallettype': '', 'precision': str(precision)
             }
@@ -372,16 +336,18 @@ class api():
             symbol = all_asset[i]['symbol']
             id_ = all_asset[i]['id']
 
-            ret_result, ret_get_volume = self.get_volume(symbol, asset_symbol[i][0])
-            if not ret_result:
-                return ret_result, ret_get_volume
-            volume = float(ret_get_volume["base_volume"])
+            # ret_result, ret_get_volume = self.get_volume(symbol, asset_symbol[i][0])
+            # if not ret_result:
+            #     return ret_result, ret_get_volume
+            # volume = float(ret_get_volume["base_volume"])
+            volume = 0
 
-            ret_result, ret_get_ticker = self.get_ticker(symbol, asset_symbol[i][0])
-            if not ret_result:
-                price = 0
-            else:
-                price = ret_get_ticker['latest']
+            # ret_result, ret_get_ticker = self.get_ticker(symbol, asset_symbol[i][0])
+            # if not ret_result:
+            #     price = 0
+            # else:
+            #     price = ret_get_ticker['latest']
+            price = 0 #新的block数据里面改版为0
 
             # todo:asset_id要与asset_id对应
             db_data = {
@@ -693,7 +659,7 @@ class api():
             self.run_log.info("fun get_witnesses err")
             return False, []
         for i in range(wit_count):
-            id_ = '1.6.{}'.format(i)
+            id_ = '1.5.{}'.format(i)
             ret_result, witness = self.get_object(id_)
             if not ret_result or witness == None:
                 continue
@@ -739,7 +705,7 @@ class api():
 
         com_count = int(committee_count)
         for i in range(com_count):
-            id_ = "1.5.{}".format(i)
+            id_ = "1.4.{}".format(i)
             ret_result, committee_member = self.get_object(id_)
             if not ret_result:
                 continue
@@ -778,7 +744,7 @@ class api():
         # 写入holder资产
         while True:
             try:
-                self.__import_assert()
+                self.__import_asset()
                 time.sleep(3)
                 self.__import_holders()
                 time.sleep(3)
@@ -1037,14 +1003,14 @@ class api():
         market_cap = int(current_supply) + int(confidental_supply)
         response["bts_market_cap"] = int(market_cap / 100000000)
 
-        if self.__TESTNET != 1:  # Todo: had to do something else for the testnet
-            ret_result, ret_volume = self.get_volume("BTS", "OPEN.BTC")
-            if not ret_result:
-                response["quote_volume"] = 0
-            else:
-                response["quote_volume"] = ret_volume["quote_volume"]
-        else:
-            response["quote_volume"] = 0
+        # if self.__TESTNET != 1:  # Todo: had to do something else for the testnet
+        #     ret_result, ret_volume = self.get_volume("BTS", "OPEN.BTC")
+        #     if not ret_result:
+        #         response["quote_volume"] = 0
+        #     else:
+        #         response["quote_volume"] = ret_volume["quote_volume"]
+        # else:
+        #     response["quote_volume"] = 0
 
         ret_result, global_properties = self.__get_global_properties()
         if not ret_result:
@@ -1189,7 +1155,7 @@ class api():
         return True, account_history
 
     def get_asset(self, asset_id):
-        return self.__get_block_assert(asset_id)
+        return self.__get_block_asset(asset_id)
 
     def get_block(self, block_num):
         msg_id = self.__get_msg_id()
@@ -1328,31 +1294,33 @@ class api():
         return limit
 
     def get_order_book(self, base, quote, limit=False):
-        limit = self.__ensure_safe_limit(limit)
-        msg_id = self.__get_msg_id()
-        method_fun = 'get_order_book'
-        try:
-            pay_load = {"id": msg_id, "method": "call", "params": [Database_api_id, method_fun, [base, quote, limit]]}
-            ret = self.__block_handle.rpcexec(pay_load)
-            # print(ret)
-            ret_orgin_data = json.loads(ret)
-        except:
-            self.run_log.info("fun get_order_book err")
-            return False, {}
-        if 'error' in ret_orgin_data:
-            self.run_log.info("get_order_book err, msg:" % ret_orgin_data)
-            return False, {}
-        ret_order_book = ret_orgin_data['result']
-        return True, ret_order_book
+        # limit = self.__ensure_safe_limit(limit)
+        # msg_id = self.__get_msg_id()
+        # method_fun = 'get_order_book'
+        # try:
+        #     pay_load = {"id": msg_id, "method": "call", "params": [Database_api_id, method_fun, [base, quote, limit]]}
+        #     ret = self.__block_handle.rpcexec(pay_load)
+        #     # print(ret)
+        #     ret_orgin_data = json.loads(ret)
+        # except:
+        #     self.run_log.info("fun get_order_book err")
+        #     return False, {}
+        # if 'error' in ret_orgin_data:
+        #     self.run_log.info("get_order_book err, msg:" % ret_orgin_data)
+        #     return False, {}
+        # ret_order_book = ret_orgin_data['result']
+        # return True, ret_order_book
+        return False, []
 
     def get_margin_positions(self, account_id):
-        api_id = Database_api_id
-        method_fun = 'get_margin_positions'
-        params = [account_id]
-        ret_result, ret_data = self.__get_request_temple(api_id, method_fun, params)
-        if not ret_result:
-            self.run_log.info("fun get_margin_positions err")
-        return True, ret_data
+        # api_id = Database_api_id
+        # method_fun = 'get_margin_positions'
+        # params = [account_id]
+        # ret_result, ret_data = self.__get_request_temple(api_id, method_fun, params)
+        # if not ret_result:
+        #     self.run_log.info("fun get_margin_positions err")
+        # return True, ret_data
+        return False, []
 
     def get_witnesses_bak(self):
         msg_id = self.__get_msg_id()
@@ -1421,7 +1389,7 @@ class api():
         committee_members = []
         com_count = int(committee_count)
         for i in range(com_count):
-            id_ = "1.5.{}".format(i)
+            id_ = "1.4.{}".format(i)
             ret_result, committee_member = self.get_object(id_)
             if not ret_result:
                 continue
@@ -1561,9 +1529,9 @@ class api():
 
         witnesses_votes = []
         for witness in witnesses:
-            vote_id = witness[0]["vote_id"]
-            id_witness = witness[0]["id"]
-            witness_account_name = witness[0]["witness_account_name"]
+            vote_id = witness["vote_id"]
+            id_witness = witness["id"]
+            witness_account_name = witness["witness_account_name"]
             proxy_votes = self.__get_formatted_proxy_votes(proxies, vote_id)
 
             witnesses_votes.append([witness_account_name, id_witness] + proxy_votes)
@@ -1590,10 +1558,10 @@ class api():
 
         workers_votes = []
         for worker in workers:
-            vote_id = worker[0]["vote_for"]
-            id_worker = worker[0]["id"]
-            worker_account_name = worker[0]["worker_account_name"]
-            worker_name = worker[0]["name"]
+            vote_id = worker["vote_for"]
+            id_worker = worker["id"]
+            worker_account_name = worker["worker_account_name"]
+            worker_name = worker["name"]
             proxy_votes = self.__get_formatted_proxy_votes(proxies, vote_id)
 
             workers_votes.append([worker_account_name, id_worker, worker_name] + proxy_votes)
@@ -1620,9 +1588,9 @@ class api():
 
         committee_votes = []
         for committee_member in committee_members:
-            vote_id = committee_member[0]["vote_id"]
-            id_committee = committee_member[0]["id"]
-            committee_account_name = committee_member[0]["committee_member_account_name"]
+            vote_id = committee_member["vote_id"]
+            id_committee = committee_member["id"]
+            committee_account_name = committee_member["committee_member_account_name"]
             proxy_votes = self.__get_formatted_proxy_votes(proxies, vote_id)
 
             committee_votes.append([committee_account_name, id_committee] + proxy_votes)
@@ -1650,7 +1618,7 @@ class api():
         for i in range(count):
             ops = self.__static_ops(ops, ret_ops_data[i]['op_type'])
 
-        ret_op = sorted(ops, key=lambda k: k[1])
+        ret_op = sorted(ops, key=lambda k: k[1], reverse=True)
         return True, ret_op[0]
 
     def get_last_network_transactions(self):
@@ -1679,7 +1647,7 @@ class api():
         return True, accounts
 
     def lookup_assets(self, start):
-        return {}
+        return False, {}
 
     def get_last_block_number(self):
         api_id = Database_api_id
@@ -2057,14 +2025,14 @@ class api():
             return False, []
 
         ret_filter_data = []
-        ret_op_sort = sorted(ret_ops_data, key=lambda k: k['id_index'], reverse=True)
+        ret_op_sort = sorted(ret_ops_data, key=lambda k: k['block_num'], reverse=True)
         for i in range(len(ret_op_sort) - 1):
             if ret_op_sort[i]["operation_id"] != ret_op_sort[i + 1]["operation_id"]:
                 ret_filter_data.append(ret_op_sort[i])
             else:
                 continue
 
-        ret_opts_sort = sorted(ret_filter_data, key=lambda k: k['id_index'], reverse=True)
+        ret_opts_sort = sorted(ret_filter_data, key=lambda k: k['block_num'], reverse=True)
 
         ret_opts_sort = ret_opts_sort[start:(start + size)]
         history_elastic = []
