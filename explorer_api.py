@@ -2,12 +2,11 @@ import threading
 
 from flask import Flask, jsonify, make_response
 from flask import request
-
-import bitshares.open_explorer_api.api_impl as impl
-
 app = Flask(__name__)
 
-impl_handle =''
+import open_explorer_api.api_impl as impl_handle
+from open_explorer_api.get_blockchain_data import import_db
+
 
 @app.route('/header', methods=['GET', 'POST'])
 def header():
@@ -668,7 +667,7 @@ def lookup_assets():
     return rst
 
 
-@app.route('/getlastblocknumbher', methods=['GET', 'POST'])
+@app.route('/getlastblocknumber', methods=['GET', 'POST'])
 def get_last_block_number():
     header_origin = request.headers['Origin']
     ret_result, ret_data = impl_handle.get_last_block_number()
@@ -902,12 +901,11 @@ def get_trx():
 
 def create_instance():
     print('start syn...')
-    impl_handle.syn_last_data()
-    impl_handle.run()
+    handle = import_db()
+    handle.run()
 
 
 if __name__ == '__main__':
-    impl_handle = impl.api()
     t = threading.Thread(target=create_instance, args=())
     t.start()
     print("app.run")
