@@ -81,7 +81,7 @@ class import_db():
             payLoad = {"method": "call", "params": [1, "login", ["", ""]], "id": msg_id}
             ret = self.__block_handle.rpcexec(payLoad)
         except:
-            self.run_log.info("login err")
+            # self.run_log.info("login err")
             return False
         if ret:
             try:
@@ -92,7 +92,7 @@ class import_db():
                 global Database_api_id
                 Database_api_id = json.loads(ret)['result']
             except:
-                self.run_log.info("database_api err")
+                # self.run_log.info("database_api err")
                 return False
             try:
                 msg_id = self.__get_msg_id()
@@ -102,7 +102,7 @@ class import_db():
                 global History_api_id
                 History_api_id = json.loads(ret)['result']
             except:
-                self.run_log.info("history_api err")
+                # self.run_log.info("history_api err")
                 return False
             try:
                 msg_id = self.__get_msg_id()
@@ -112,10 +112,10 @@ class import_db():
                 global Asset_api_id
                 Asset_api_id = json.loads(ret)['result']
             except:
-                self.run_log.info("asset_api err")
+                # self.run_log.info("asset_api err")
                 return False
         else:
-            self.run_log.info("login failure")
+            # self.run_log.info("login failure")
             return False
         return True
 
@@ -138,10 +138,10 @@ class import_db():
             ret_orgin_data = json.loads(ret)
             ret_list_account = ret_orgin_data['result'][0]
         except:
-            self.run_log.info("fun list_assets err")
+            # self.run_log.info("fun list_assets err")
             return False, {}
         if 'error' in ret_orgin_data:
-            self.run_log("lookup_asset_symbols, err, msg:" % ret_orgin_data)
+            # self.run_log("lookup_asset_symbols, err, msg:" % ret_orgin_data)
             return False, {}
 
         try:
@@ -171,10 +171,10 @@ class import_db():
             # print(ret)
             ret_orgin_data = json.loads(ret)
         except:
-            self.run_log.info("fun list_assets err")
+            # self.run_log.info("fun list_assets err")
             return False, json.dumps(ret)
         if 'error' in ret_orgin_data:
-            self.run_log.info("get_asset_holders_count err, msg:" % ret_orgin_data)
+            # self.run_log.info("get_asset_holders_count err, msg:" % ret_orgin_data)
             return False, {}
         return True, ret_orgin_data['result']
 
@@ -188,7 +188,7 @@ class import_db():
             # print(ret)
             ret_orgin_data = json.loads(ret)
         except:
-            self.run_log.info("fun list_assets err")
+            # self.run_log.info("fun list_assets err")
             ret = {}
             return json.dumps(ret)
         if 'error' in ret_orgin_data:
@@ -213,7 +213,7 @@ class import_db():
             if not ret_result:
                 return ret_result, ret_asset_holders_count
 
-            if symbol == 'BTS':
+            if symbol == 'NEST':
                 type_ = "Core Token"
             elif all_asset[i]["issuer"] == "1.2.0":
                 type_ = "SmartCoin"
@@ -256,7 +256,7 @@ class import_db():
             # print(ret)
             ret_orgin_data = json.loads(ret)
         except:
-            self.run_log.info("fun list_assets err")
+            # self.run_log.info("fun list_assets err")
             ret = {}
             return json.dumps(ret)
         if 'error' in ret_orgin_data:
@@ -302,11 +302,11 @@ class import_db():
             ret = self.__block_handle.rpcexec(pay_load)
             # print(ret)
         except:
-            self.run_log.info("fun get_account_count err")
+            # self.run_log.info("fun get_account_count err")
             return False, {}
         ret_orgin_data = json.loads(ret)
         if 'error' in ret_orgin_data:
-            self.run_log.info("get_object err, msg:" % ret_orgin_data)
+            # self.run_log.info("get_object err, msg:" % ret_orgin_data)
             return False, {}
         ret_account_count = int(ret_orgin_data['result'])
 
@@ -320,7 +320,7 @@ class import_db():
                 ret = self.__block_handle.rpcexec(pay_load)
                 ret_get_objects1 = json.loads(ret)
             except:
-                self.run_log.info("fun get_objects err")
+                # self.run_log.info("fun get_objects err")
                 return False, {}
             # print('get_objects', ret_get_objects1)
             accout_id = ret_get_objects1['result'][0]['id']
@@ -334,7 +334,7 @@ class import_db():
                 ret = self.__block_handle.rpcexec(pay_load)
                 ret_balances = json.loads(ret)
             except:
-                self.run_log.info("fun get_account_balances err")
+                # self.run_log.info("fun get_account_balances err")
                 return False, {}
             # print('balance', ret_balances)
             total_amount += float(ret_balances['result'][0]['amount'])
@@ -347,7 +347,7 @@ class import_db():
                 ret = self.__block_handle.rpcexec(pay_load)
                 ret_get_objects2 = json.loads(ret)
             except ValueError:
-                self.run_log.info("fun get_objects err")
+                # self.run_log.info("fun get_objects err")
                 return False, {}
 
             db_data = {
@@ -372,7 +372,7 @@ class import_db():
             # print(ret)
             ret_orgin_data = json.loads(ret)
         except:
-            self.run_log.info("fun get_account_count err")
+            # self.run_log.info("fun get_account_count err")
             ret = {}
             return json.dumps(ret)
         if 'error' in ret_orgin_data:
@@ -413,10 +413,10 @@ class import_db():
             # print(ret)
             ret_orgin_data = json.loads(ret)
         except:
-            self.run_log.info("fun get_accounts err")
+            # self.run_log.info("fun get_accounts err")
             return False, []
         if 'error' in ret_orgin_data:
-            self.run_log.info("get_accounts err, msg:" % ret_orgin_data)
+            # self.run_log.info("get_accounts err, msg:" % ret_orgin_data)
             return False, {}
         return True, ret_orgin_data['result']
 
@@ -429,10 +429,10 @@ class import_db():
             # print(ret)
             ret_orgin_data = json.loads(ret)
         except:
-            self.run_log.info("fun get_block_header err")
+            # self.run_log.info("fun get_block_header err")
             return False, {}
         if 'error' in ret_orgin_data:
-            self.run_log.info("get_block_header err, msg:" % ret_orgin_data)
+            # self.run_log.info("get_block_header err, msg:" % ret_orgin_data)
             return False, {}
         ret_data = ret_orgin_data['result']
         return True, ret_data
@@ -444,7 +444,7 @@ class import_db():
             id_ = '2.9.' + str(i + start_index)
             ret_result, ret_object = self.get_object(id_)
             if not ret_result:
-                self.run_log.info("__import_operation, err")
+                # self.run_log.info("__import_operation, err")
                 continue
             if ret_object == None:
                 return True, []
@@ -454,19 +454,19 @@ class import_db():
 
             ret_result, ret_account_data = self.get_account(account_id)
             if not ret_result:
-                self.run_log.info("__import_operation, err")
+                # self.run_log.info("__import_operation, err")
                 continue
             account_name = ret_account_data[0]['name']
 
             ret_result, ret_op_data = self.get_object(op_id)
             if not ret_result:
-                self.run_log.info("__import_operation, err")
+                # self.run_log.info("__import_operation, err")
                 continue
 
             block_num = ret_op_data['block_num']
             ret_result, ret_block_data = self.get_block_header(block_num)
             if not ret_result:
-                self.run_log.info('__import_operation err')
+                # self.run_log.info('__import_operation err')
                 continue
 
             datetime = ret_block_data['timestamp']
@@ -524,10 +524,10 @@ class import_db():
             # print(ret)
             ret_orgin_data = json.loads(ret)
         except:
-            self.run_log.info("fun get_block err")
+            # self.run_log.info("fun get_block err")
             return False, {}
         if 'error' in ret_orgin_data:
-            self.run_log.info("get_block err, msg:" % ret_orgin_data)
+            # self.run_log.info("get_block err, msg:" % ret_orgin_data)
             return False, {}
         ret_data = ret_orgin_data['result']
         return True, ret_data
@@ -540,7 +540,7 @@ class import_db():
             id_ = '2.9.' + str(i + start_index)
             ret_result, ret_object_op = self.get_object(id_)
             if not ret_result:
-                self.run_log.info("__import_operation, err")
+                # self.run_log.info("__import_operation, err")
                 continue
             if ret_object_op == None:
                 break
@@ -553,7 +553,7 @@ class import_db():
 
             ret_result, ret_op_data = self.get_object(operation_id)
             if not ret_result:
-                self.run_log.info("syn_data_to_db, err")
+                # self.run_log.info("syn_data_to_db, err")
                 continue
 
             block_num = ret_op_data['block_num']
@@ -563,7 +563,7 @@ class import_db():
 
             ret_result, ret_block_data = self.get_block(block_num)
             if not ret_result:
-                self.run_log.info('__import_operation err')
+                # self.run_log.info('__import_operation err')
                 continue
 
             date_time = ret_block_data['timestamp']
@@ -598,13 +598,13 @@ class import_db():
             ret_orgin_data = json.loads(ret)
             witnesses_count = ret_orgin_data['result']
         except:
-            self.run_log.info("fun get_witnesses err")
+            # self.run_log.info("fun get_witnesses err")
             return False, []
 
         try:
             wit_count = int(witnesses_count)
         except:
-            self.run_log.info("fun get_witnesses err")
+            # self.run_log.info("fun get_witnesses err")
             return False, []
         for i in range(wit_count):
             id_ = '1.5.{}'.format(i)
@@ -622,7 +622,7 @@ class import_db():
                 ret_orgin_data = json.loads(ret)
                 witness["witness_account_name"] = ret_orgin_data['result'][0]['name']
             except Exception as e:
-                self.run_log.info("fun get_witnesses err, witness:{}".format(witness))
+                # self.run_log.info("fun get_witnesses err, witness:{}".format(witness))
                 continue
 
             if not self.__db_witness.find_one({"id": id_}):
@@ -639,10 +639,10 @@ class import_db():
             ret_orgin_data = json.loads(ret)
             ret_result = ret_orgin_data['result']
         except:
-            self.run_log.info("fun %s err" % method_fun)
+            # self.run_log.info("fun %s err" % method_fun)
             return False, {}
         if 'error' in ret_orgin_data:
-            self.run_log.info("{} err, msg:{}".format(method_fun, ret_orgin_data))
+            # self.run_log.info("{} err, msg:{}".format(method_fun, ret_orgin_data))
             return False, {}
         return True, ret_result
 
@@ -652,7 +652,7 @@ class import_db():
         params = ['']
         ret_result, committee_count = self.__get_request_temple(api_id, method_fun, params)
         if not ret_result:
-            self.run_log.info("fun get_committee_count err")
+            # self.run_log.info("fun get_committee_count err")
             return False, []
 
         com_count = int(committee_count)
@@ -672,7 +672,7 @@ class import_db():
                 ret_orgin_data = json.loads(ret)
                 committee_member["committee_member_account_name"] = ret_orgin_data['result'][0]['name']
             except Exception as e:
-                self.run_log.info("fun get_committee_count err, witness:{}".format(committee_member))
+                # self.run_log.info("fun get_committee_count err, witness:{}".format(committee_member))
                 continue
             if not self.__db_committee.find_one({"id": id_}):
                 self.__db_committee.insert(committee_member)
@@ -714,10 +714,10 @@ class import_db():
             ret_orgin_data = json.loads(ret)
             ret_data = ret_orgin_data['result'][0]
         except:
-            self.run_log.info("fun get_objects err,id:{}".format(object_id))
+            # self.run_log.info("fun get_objects err,id:{}".format(object_id))
             return False, {}
         if 'error' in ret_orgin_data:
-            self.run_log.info("get_object err, msg:{}".format(ret_orgin_data))
+            # self.run_log.info("get_object err, msg:{}".format(ret_orgin_data))
             return False, {}
         return True, ret_data
 
