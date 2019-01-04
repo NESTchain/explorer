@@ -232,7 +232,21 @@ def get_operation_full(operation_id):
 # "total_claimed":{"amount":4458,"asset_id":"1.3.0"}}]', 'op_in_trx': 0,
 # 'operation_result': '[0,{}]', 'trx_in_block': 0, 'virtual_op': 31500}, 'operation_id_num': 0, 'operation_type': 37}]
 def get_operation_full_elastic(operation_id):
-    return get_operation(operation_id)
+    db_client = MongoClient(MONGO_URL + '/?authSource=admin', MONGO_PORT, connect=False)
+    table_base = 'explorer'
+    table = 'syndb'
+    db_syn = db_client[table_base][table]
+    count = db_syn.find({"operation_id": operation_id}).count()
+    ret_trx_db = list(db_syn.find({"operation_id": operation_id}).limit(count))
+    if count <= 0:
+        return True,
+
+    result, ret_op = get_operation(operation_id)
+    if not result:
+        return False, []
+    ret_op['block_time'] = ret_trx_db[0]['datetime']
+    ret_op['trx_id'] = ret_trx_db[0]['trx_id']
+    return True, ret_op
 
 
 def get_accounts():
