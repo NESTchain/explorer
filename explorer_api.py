@@ -8,20 +8,22 @@ import open_explorer_api.api_impl as impl_handle
 from open_explorer_api.get_blockchain_data import import_db
 
 
-@app.route('/header', methods=['GET', 'POST'])
+@app.route('/api/header', methods=['GET', 'POST'])
 def header():
-    header_origin = request.headers['Origin']
+    # print("/e.iotee.io/header enter")
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_header()
     if not ret_result:
         ret_data = []
     rst = make_response(jsonify(dict(ret_data)))
     rst.headers['Content-Type'] = 'application/json'
     rst.headers['Access-Control-Allow-Origin'] = header_origin
+    # print("/e.iotee.io/header return")
     return rst
 
-@app.route('/top_proxies', methods=['GET', 'POST'])
+@app.route('/api/top_proxies', methods=['GET', 'POST'])
 def top_proxies():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     count, ret_holders_data = impl_handle.get_holders()
     ret_data_tmp = []
     ret_data = []
@@ -47,9 +49,9 @@ def top_proxies():
     return rst
 
 
-@app.route('/top_holders', methods=['GET', 'POST'])
+@app.route('/api/top_holders', methods=['GET', 'POST'])
 def top_holders():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     count, ret_holders_data = impl_handle.get_holders()
     ret_data_tmp = []
     ret_data = []
@@ -72,10 +74,10 @@ def top_holders():
     return rst
 
 
-@app.route('/top_markets', methods=['GET', 'POST'])
+@app.route('/api/top_markets', methods=['GET', 'POST'])
 #todo :这个接口可以考虑删除
 def top_markets():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     count, ret_market_data = impl_handle.get_market()
 
     ret_request = []
@@ -92,9 +94,9 @@ def top_markets():
     return rst
 
 
-@app.route('/top_smartcoins', methods=['GET', 'POST'])
+@app.route('/api/top_smartcoins', methods=['GET', 'POST'])
 def top_smartcoins():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
 
     count, ret_smart_data = impl_handle.get_assert()
     ret_request = []
@@ -111,9 +113,9 @@ def top_smartcoins():
     return rst
 
 
-@app.route('/top_uias', methods=['GET', 'POST'])
+@app.route('/api/top_uias', methods=['GET', 'POST'])
 def top_uias():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     count, ret_uias_data = impl_handle.get_assert()
     ret_request = []
     if count > 0:
@@ -129,9 +131,9 @@ def top_uias():
     return rst
 
 
-@app.route('/account', methods=['GET', 'POST'])
+@app.route('/api/account', methods=['GET', 'POST'])
 def get_account():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     account_id = request.args.get('account_id')
 
     ret_result, ret_account_data = impl_handle.get_account(account_id)
@@ -144,9 +146,9 @@ def get_account():
     return rst
 
 
-@app.route('/account_name', methods=['GET', 'POST'])
+@app.route('/api/account_name', methods=['GET', 'POST'])
 def get_account_name():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     account_id = request.args.get('account_id')
 
     ret_result, ret_account_data = impl_handle.get_account_name(account_id)
@@ -159,9 +161,9 @@ def get_account_name():
     return rst
 
 
-@app.route('/account_id', methods=['GET', 'POST'])
+@app.route('/api/account_id', methods=['GET', 'POST'])
 def get_account_id():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     account_name = request.args.get('account_name')
 
     ret_result, ret_account_data = impl_handle.get_account_id(account_name)
@@ -174,9 +176,9 @@ def get_account_id():
     return rst
 
 
-@app.route('/operation', methods=['GET', 'POST'])
+@app.route('/api/operation', methods=['GET', 'POST'])
 def get_operation():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     operation_id = request.args.get('operation_id')
 
     ret_result, ret_operation_data = impl_handle.get_operation(operation_id)
@@ -189,9 +191,9 @@ def get_operation():
     return rst
 
 
-@app.route('/operation_full', methods=['GET', 'POST'])
+@app.route('/api/operation_full', methods=['GET', 'POST'])
 def get_operation_full():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     operation_id = request.args.get('operation_id')
 
     ret_result, ret_operation_data = impl_handle.get_operation_full(operation_id)
@@ -204,9 +206,9 @@ def get_operation_full():
     return rst
 
 
-@app.route('/operation_full_elastic', methods=['GET', 'POST'])
+@app.route('/api/operation_full_elastic', methods=['GET', 'POST'])
 def get_operation_full_elastic():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     operation_id = request.args.get('operation_id')
 
     ret_result, ret_operation_data = impl_handle.get_operation_full_elastic(operation_id)
@@ -219,9 +221,9 @@ def get_operation_full_elastic():
     return rst
 
 
-@app.route('/accounts', methods=['GET', 'POST'])
+@app.route('/api/accounts', methods=['GET', 'POST'])
 def get_accounts():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
 
     ret_result, ret_account_data = impl_handle.get_accounts()
     if not ret_result:
@@ -233,9 +235,9 @@ def get_accounts():
     return rst
 
 
-@app.route('/full_account', methods=['GET', 'POST'])
+@app.route('/api/full_account', methods=['GET', 'POST'])
 def get_full_account():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     account_id = request.args.get('account_id')
 
     ret_result, ret_account_data = impl_handle.get_full_account(account_id)
@@ -248,9 +250,9 @@ def get_full_account():
     return rst
 
 
-@app.route('/assets', methods=['GET', 'POST'])
+@app.route('/api/assets', methods=['GET', 'POST'])
 def get_assets():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     count, ret_asset_data = impl_handle.get_assert()
     ret_datas = []
     if count > 0:
@@ -269,9 +271,9 @@ def get_assets():
     return rst
 
 
-@app.route('/fees', methods=['GET', 'POST'])
+@app.route('/api/fees', methods=['GET', 'POST'])
 def get_fees():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_fees()
     if not ret_result:
         ret_data = []
@@ -282,9 +284,9 @@ def get_fees():
     return rst
 
 
-@app.route('/account_history', methods=['GET', 'POST'])
+@app.route('/api/account_history', methods=['GET', 'POST'])
 def get_account_history():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     account_id = request.args.get('account_id')
     ret_result, ret_data = impl_handle.get_account_history(account_id)
     if not ret_result:
@@ -296,9 +298,9 @@ def get_account_history():
     return rst
 
 
-@app.route('/get_asset', methods=['GET', 'POST'])
+@app.route('/api/get_asset', methods=['GET', 'POST'])
 def get_asset():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     asset_id = request.args.get('asset_id')
     ret_result, ret_data = impl_handle.get_asset(asset_id)
     if not ret_result:
@@ -312,7 +314,7 @@ def get_asset():
 
 @app.route('/get_asset_and_volume', methods=['GET', 'POST'])
 def get_asset_and_volume():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     asset_id = request.args.get('asset_id')
     ret_result, ret_get_data = impl_handle.get_asset(asset_id)
     count, ret_asset_data = impl_handle.get_assert()
@@ -330,9 +332,9 @@ def get_asset_and_volume():
     return rst
 
 
-@app.route('/block_header', methods=['GET', 'POST'])
+@app.route('/api/block_header', methods=['GET', 'POST'])
 def get_block_header():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     block_num = request.args.get('block_num')
     ret_result, ret_data = impl_handle.get_block_header(block_num)
     if not ret_result:
@@ -344,9 +346,9 @@ def get_block_header():
     return rst
 
 
-@app.route('/get_block', methods=['GET', 'POST'])
+@app.route('/api/get_block', methods=['GET', 'POST'])
 def get_block():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     block_num = request.args.get('block_num')
     ret_result, ret_data = impl_handle.get_block(block_num)
     if not ret_result:
@@ -358,10 +360,10 @@ def get_block():
     return rst
 
 
-@app.route('/get_ticker', methods=['GET', 'POST'])
+@app.route('/api/get_ticker', methods=['GET', 'POST'])
 # todo:未来删除这个接口
 def get_ticker():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     base = request.args.get('base')
     quote = request.args.get('quote')
     # ret_result, ret_data = impl_handle.get_ticker(base, quote)
@@ -374,9 +376,9 @@ def get_ticker():
     return rst
 
 
-@app.route('/get_volume', methods=['GET', 'POST'])
+@app.route('/api/get_volume', methods=['GET', 'POST'])
 def get_volume():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     # base = request.args.get('base')
     # quote = request.args.get('quote')
     # ret_result, ret_data = impl_handle.get_volume(base, quote)
@@ -389,9 +391,9 @@ def get_volume():
     return rst
 
 
-@app.route('/lastnetworkops', methods=['GET', 'POST'])
+@app.route('/api/lastnetworkops', methods=['GET', 'POST'])
 def get_last_network_ops():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_last_network_ops()
     if not ret_result:
         ret_data = []
@@ -401,9 +403,9 @@ def get_last_network_ops():
     return rst
 
 
-@app.route('/get_object', methods=['GET', 'POST'])
+@app.route('/api/get_object', methods=['GET', 'POST'])
 def get_object():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     object_id = request.args.get('object')
     ret_result, ret_data = impl_handle.get_object(object_id)
     if not ret_result:
@@ -414,9 +416,9 @@ def get_object():
     return rst
 
 
-@app.route('/get_asset_holders_count', methods=['GET', 'POST'])
+@app.route('/api/get_asset_holders_count', methods=['GET', 'POST'])
 def get_asset_holders_count():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     asset_id = request.args.get('asset_id')
     ret_result, ret_data = impl_handle.get_asset_holders_count(asset_id)
     if not ret_result:
@@ -427,9 +429,9 @@ def get_asset_holders_count():
     return rst
 
 
-@app.route('/get_asset_holders', methods=['GET', 'POST'])
+@app.route('/api/get_asset_holders', methods=['GET', 'POST'])
 def get_asset_holders():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     asset_id = request.args.get('asset_id')
     start = request.args.get('start')
     limit = request.args.get('limit')
@@ -442,9 +444,9 @@ def get_asset_holders():
     return rst
 
 
-@app.route('/get_workers', methods=['GET', 'POST'])
+@app.route('/api/get_workers', methods=['GET', 'POST'])
 def get_workers():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_workers()
     if not ret_result:
         ret_data = []
@@ -454,9 +456,9 @@ def get_workers():
     return rst
 
 
-@app.route('/get_markets', methods=['GET', 'POST'])
+@app.route('/api/get_markets', methods=['GET', 'POST'])
 def get_markets():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     asset_id = request.args.get('asset_id')
     count, ret_market_data = impl_handle.get_market()
 
@@ -474,9 +476,9 @@ def get_markets():
     return rst
 
 
-@app.route('/get_most_active_markets', methods=['GET', 'POST'])
+@app.route('/api/get_most_active_markets', methods=['GET', 'POST'])
 def get_most_active_markets():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     count, ret_market_data = impl_handle.get_market()
 
     ret_data = []
@@ -493,10 +495,10 @@ def get_most_active_markets():
     return rst
 
 
-@app.route('/get_order_book', methods=['GET', 'POST'])
+@app.route('/api/get_order_book', methods=['GET', 'POST'])
 #todo 这个接口要删除
 def get_order_book():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     # base = request.args.get('base')
     # quote = request.args.get('quote')
     # limit = request.args.get('limit')
@@ -509,10 +511,10 @@ def get_order_book():
     return rst
 
 
-@app.route('/get_margin_positions', methods=['GET', 'POST'])
+@app.route('/api/get_margin_positions', methods=['GET', 'POST'])
 #todo 这个接口要删除
 def get_margin_positions():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     # account_id = request.args.get('account_id')
     # ret_result, ret_data = impl_handle.get_margin_positions(account_id)
     # if not ret_result:
@@ -523,9 +525,9 @@ def get_margin_positions():
     return rst
 
 
-@app.route('/get_witnesses', methods=['GET', 'POST'])
+@app.route('/api/get_witnesses', methods=['GET', 'POST'])
 def get_witnesses():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_witnesses()
     if not ret_result:
         ret_data = []
@@ -535,9 +537,9 @@ def get_witnesses():
     return rst
 
 
-@app.route('/get_committee_members', methods=['GET', 'POST'])
+@app.route('/api/get_committee_members', methods=['GET', 'POST'])
 def get_committee_members():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_committee_members()
     if not ret_result:
         ret_data = []
@@ -547,10 +549,10 @@ def get_committee_members():
     return rst
 
 
-@app.route('/market_chart_dates', methods=['GET', 'POST'])
+@app.route('/api/market_chart_dates', methods=['GET', 'POST'])
 #todo 可以删除
 def get_market_chart_dates():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     # ret_result, ret_data = impl_handle.get_market_chart_dates()
     # if not ret_result:
     ret_data = []
@@ -560,10 +562,10 @@ def get_market_chart_dates():
     return rst
 
 
-@app.route('/market_chart_data', methods=['GET', 'POST'])
+@app.route('/api/market_chart_data', methods=['GET', 'POST'])
 #todo 暂时保留
 def get_market_chart_data():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     base = request.args.get('base')
     quote = request.args.get('quote')
     ret_result, ret_data = impl_handle.get_market_chart_data(base, quote)
@@ -575,9 +577,9 @@ def get_market_chart_data():
     return rst
 
 
-@app.route('/witnesses_votes', methods=['GET', 'POST'])
+@app.route('/api/witnesses_votes', methods=['GET', 'POST'])
 def get_witnesses_votes():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_witnesses_votes()
     if not ret_result:
         ret_data = []
@@ -587,9 +589,9 @@ def get_witnesses_votes():
     return rst
 
 
-@app.route('/workers_votes', methods=['GET', 'POST'])
+@app.route('/api/workers_votes', methods=['GET', 'POST'])
 def get_workers_votes():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_workers_votes()
     if not ret_result:
         ret_data = []
@@ -599,9 +601,9 @@ def get_workers_votes():
     return rst
 
 
-@app.route('/committee_votes', methods=['GET', 'POST'])
+@app.route('/api/committee_votes', methods=['GET', 'POST'])
 def get_committee_votes():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_committee_votes()
     if not ret_result:
         ret_data = []
@@ -611,9 +613,9 @@ def get_committee_votes():
     return rst
 
 
-@app.route('/top_operations', methods=['GET', 'POST'])
+@app.route('/api/top_operations', methods=['GET', 'POST'])
 def get_top_operations():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_top_operations()
     if not ret_result:
         ret_data = []
@@ -623,9 +625,9 @@ def get_top_operations():
     return rst
 
 
-@app.route('/last_network_transactions', methods=['GET', 'POST'])
+@app.route('/api/last_network_transactions', methods=['GET', 'POST'])
 def get_last_network_transactions():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_last_network_transactions()
     if not ret_result:
         ret_data = []
@@ -635,9 +637,9 @@ def get_last_network_transactions():
     return rst
 
 
-@app.route('/lookup_accounts', methods=['GET', 'POST'])
+@app.route('/api/lookup_accounts', methods=['GET', 'POST'])
 def lookup_accounts():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     start = request.args.get('start')
     ret_result, ret_data = impl_handle.lookup_accounts(start)
     if not ret_result:
@@ -648,9 +650,9 @@ def lookup_accounts():
     return rst
 
 
-@app.route('/lookup_assets', methods=['GET', 'POST'])
+@app.route('/api/lookup_assets', methods=['GET', 'POST'])
 def lookup_assets():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     start = request.args.get('start')
     count, ret_asset_data = impl_handle.get_assert()
     ret_data = []
@@ -667,9 +669,9 @@ def lookup_assets():
     return rst
 
 
-@app.route('/getlastblocknumber', methods=['GET', 'POST'])
+@app.route('/api/getlastblocknumber', methods=['GET', 'POST'])
 def get_last_block_number():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_last_block_number()
     if not ret_result:
         ret_data = []
@@ -679,9 +681,9 @@ def get_last_block_number():
     return rst
 
 
-@app.route('/account_history_pager', methods=['GET', 'POST'])
+@app.route('/api/account_history_pager', methods=['GET', 'POST'])
 def get_account_history_pager():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     account_id = request.args.get('account_id')
     page = request.args.get('page')
     ret_result, ret_data = impl_handle.get_account_history_pager(account_id, page)
@@ -693,9 +695,9 @@ def get_account_history_pager():
     return rst
 
 
-@app.route('/account_history_pager_elastic', methods=['GET', 'POST'])
+@app.route('/api/account_history_pager_elastic', methods=['GET', 'POST'])
 def get_account_history_pager_elastic():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     account_id = request.args.get('account_id')
     page = request.args.get('page')
     ret_result, ret_data = impl_handle.get_account_history_pager_elastic(account_id, page)
@@ -707,10 +709,10 @@ def get_account_history_pager_elastic():
     return rst
 
 
-@app.route('/get_limit_orders', methods=['GET', 'POST'])
+@app.route('/api/get_limit_orders', methods=['GET', 'POST'])
 #todo 可以删除
 def get_limit_orders():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     # base = request.args.get('base')
     # quote = request.args.get('quote')
     # ret_result, ret_data = impl_handle.get_limit_orders(base, quote)
@@ -722,10 +724,10 @@ def get_limit_orders():
     return rst
 
 
-@app.route('/get_call_orders', methods=['GET', 'POST'])
+@app.route('/api/get_call_orders', methods=['GET', 'POST'])
 #todo 可以删除
 def get_call_orders():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     # asset_id = request.args.get('asset_id')
     # ret_result, ret_data = impl_handle.get_call_orders(asset_id)
     # if not ret_result:
@@ -736,10 +738,10 @@ def get_call_orders():
     return rst
 
 
-@app.route('/get_settle_orders', methods=['GET', 'POST'])
+@app.route('/api/get_settle_orders', methods=['GET', 'POST'])
 #todo 可以删除
 def get_settle_orders():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     # base = request.args.get('base')
     # ret_result, ret_data = impl_handle.get_settle_orders(base)
     # if not ret_result:
@@ -750,10 +752,10 @@ def get_settle_orders():
     return rst
 
 
-@app.route('/get_dex_total_volume', methods=['GET', 'POST'])
+@app.route('/api/get_dex_total_volume', methods=['GET', 'POST'])
 #todo 可以删除
 def get_dex_total_volume():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     # ret_result, ret_data = impl_handle.get_dex_total_volume()
     # if not ret_result:
     ret_data = []
@@ -763,9 +765,9 @@ def get_dex_total_volume():
     return rst
 
 
-@app.route('/daily_volume_dex_dates', methods=['GET', 'POST'])
+@app.route('/api/daily_volume_dex_dates', methods=['GET', 'POST'])
 def get_daily_volume_dex_dates():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_daily_volume_dex_dates()
     if not ret_result:
         ret_data = []
@@ -775,9 +777,9 @@ def get_daily_volume_dex_dates():
     return rst
 
 
-@app.route('/daily_volume_dex_data', methods=['GET', 'POST'])
+@app.route('/api/daily_volume_dex_data', methods=['GET', 'POST'])
 def get_daily_volume_dex_data():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     ret_result, ret_data = impl_handle.get_daily_volume_dex_data()
     if not ret_result:
         ret_data = []
@@ -787,9 +789,9 @@ def get_daily_volume_dex_data():
     return rst
 
 
-@app.route('/get_all_asset_holders', methods=['GET', 'POST'])
+@app.route('/api/get_all_asset_holders', methods=['GET', 'POST'])
 def get_all_asset_holders():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     asset_id = request.args.get('asset_id')
     ret_result, ret_data = impl_handle.get_all_asset_holders(asset_id)
     if not ret_result:
@@ -800,9 +802,9 @@ def get_all_asset_holders():
     return rst
 
 
-@app.route('/referrer_count', methods=['GET', 'POST'])
+@app.route('/api/referrer_count', methods=['GET', 'POST'])
 def get_referrer_count():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     account_id = request.args.get('account_id')
     ret_result, ret_data = impl_handle.get_referrer_count(account_id)
     if not ret_result:
@@ -813,9 +815,9 @@ def get_referrer_count():
     return rst
 
 
-@app.route('/get_all_referrers', methods=['GET', 'POST'])
+@app.route('/api/get_all_referrers', methods=['GET', 'POST'])
 def get_all_referrers():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     account_id = request.args.get('account_id')
     page = request.args.get('page')
     ret_result, ret_data = impl_handle.get_all_referrers(account_id, page)
@@ -827,10 +829,10 @@ def get_all_referrers():
     return rst
 
 
-@app.route('/get_grouped_limit_orders', methods=['GET', 'POST'])
+@app.route('/api/get_grouped_limit_orders', methods=['GET', 'POST'])
 #todo 这个接口删除
 def get_grouped_limit_orders():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     # base = request.args.get('base')
     # quote = request.args.get('quote')
     # group = request.args.get('group')
@@ -845,9 +847,9 @@ def get_grouped_limit_orders():
 
 
 # *elastic*
-@app.route('/get_account_history', methods=['GET', 'POST'])
+@app.route('/api/get_account_history', methods=['GET', 'POST'])
 def get_account_history_elastic():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
 
     size = int(request.args.get('size'))
     from_ = int(request.args.get('from_'))
@@ -861,9 +863,9 @@ def get_account_history_elastic():
     rst.headers['Access-Control-Allow-Origin'] = header_origin
     return rst
 
-@app.route('/get_account_history2', methods=['GET', 'POST'])
+@app.route('/api/get_account_history2', methods=['GET', 'POST'])
 def get_account_history_elastic2():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
     from_date = request.args.get('from_date')
     to_date = request.args.get('to_date')
     type = request.args.get('type')
@@ -884,9 +886,9 @@ def get_account_history_elastic2():
     return rst
 
 
-@app.route('/get_trx', methods=['GET', 'POST'])
+@app.route('/api/get_trx', methods=['GET', 'POST'])
 def get_trx():
-    header_origin = request.headers['Origin']
+    header_origin = request.headers['Referer']
 
     trx = request.args.get('trx')
     size = int(request.args.get('size'))
@@ -910,4 +912,4 @@ if __name__ == '__main__':
     t.start()
     print("app.run")
     app.run(host='0.0.0.0', port=5000, threaded=True)
-
+    #app.run(host='0.0.0.0', port=5000, threaded=True, ssl_context=('/etc/letsencrypt/archive/e.iotee.io/fullchain2.pem', '/etc/letsencrypt/archive/e.iotee.io/privkey2.pem'))

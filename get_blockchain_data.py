@@ -312,6 +312,7 @@ class import_db():
 
         total_amount = 0
         for ac in range(0, ret_account_count):
+            # import holders
             method_fun = 'get_objects'
             msg_id = self.__get_msg_id()
             try:
@@ -339,17 +340,6 @@ class import_db():
             # print('balance', ret_balances)
             total_amount += float(ret_balances['result'][0]['amount'])
 
-            method_fun = 'get_objects'
-            msg_id = self.__get_msg_id()
-            try:
-                pay_load = {"id": msg_id, "method": "call",
-                            "params": [Database_api_id, method_fun, [[ret_get_objects1['result'][0]['statistics']]]]}
-                ret = self.__block_handle.rpcexec(pay_load)
-                ret_get_objects2 = json.loads(ret)
-            except ValueError:
-                # self.run_log.info("fun get_objects err")
-                return False, {}
-
             db_data = {
                 'account_id': accout_id,
                 'account_name': account_name,
@@ -361,6 +351,26 @@ class import_db():
                 self.__db_holders.insert(db_data)
             else:
                 self.__db_holders.update({'account_name': account_name}, {'$set': db_data})
+
+            # import referrer
+            account_id = ret_get_objects1['result'][0]['id']
+            account_name = ret_get_objects1['result'][0]['name']
+
+            referrer = ret_get_objects1['result'][0]["referrer"]
+            referrer_rewards_percentage = ret_get_objects1['result'][0]["referrer_rewards_percentage"]
+            lifetime_referrer = ret_get_objects1['result'][0]["lifetime_referrer"]
+            lifetime_referrer_fee_percentage = ret_get_objects1['result'][0]["lifetime_referrer_fee_percentage"]
+
+            db_data = {
+                'account_id': account_id, 'account_name': account_name, 'referrer': referrer,
+                'referrer_rewards_percentage': referrer_rewards_percentage, 'lifetime_referrer': lifetime_referrer,
+                'lifetime_referrer_fee_percentage': lifetime_referrer_fee_percentage
+            }
+
+            if not self.__db_referrers.find_one({'account_id': account_id}):
+                self.__db_referrers.insert(db_data)
+            else:
+                self.__db_referrers.update({'account_id': account_id}, {'$set': db_data})
         pass
 
     def __import_referrers(self):
@@ -438,8 +448,10 @@ class import_db():
         return True, ret_data
 
     def __import_operation(self, start_index):
-        step = 1000
+        step = 100
         margin = start_index + step
+        ret_insert_op = []
+        up_count = 0
         for i in range(margin):
             id_ = '2.9.' + str(i + start_index)
             ret_result, ret_object = self.get_object(id_)
@@ -481,13 +493,17 @@ class import_db():
                 'op_type': op_type, 'account_name': account_name
             }
 
-            if not self.__db_ops.find_one({'ath': op_id}):
-                self.__db_ops.insert(db_data)
-            else:
-                self.__db_ops.update({'ath': op_id}, {'$set': db_data})
+            # if not self.__db_ops.find_one({'ath': op_id}):
+                # self.__db_ops.insert(db_data)
+            ret_insert_op.append(db_data)
+            # else:
+            #     self.__db_ops.update({'ath': op_id}, {'$set': db_data})
+            #     up_count += 1
 
             if (i + start_index + 1) >= margin:
                 margin += step
+        self.__db_ops.insert_many(ret_insert_op)
+        # print("update op_db count:{}".format(up_count))
 
     def get_syn_data(self):
         try:
@@ -508,8 +524,8 @@ class import_db():
             index = 0
         else:
             sort_data = sorted(ret_syn, key=lambda k: k['id_index'], reverse=True)
-            index = sort_data[0]['id_index'] + 1
-            self.__id_index = index + 1
+            index = int(sort_data[0]['id_index']) + 1
+            self.__id_index = index
         if self.__first_syn:
             self.__first_syn = False
         if self.__syn_data_to_db(index):
@@ -534,13 +550,15 @@ class import_db():
 
     def __syn_data_to_db(self, start_index):
         # 同步数据至数据库
-        step = 1000
-        margin = start_index + step
-        for i in range(margin):
+        step = 200
+        # margin = start_index + step
+        ret_insert_syn = []
+        ret_insert_ops = []
+        for i in range(step):
             id_ = '2.9.' + str(i + start_index)
             ret_result, ret_object_op = self.get_object(id_)
             if not ret_result:
-                # self.run_log.info("__import_operation, err")
+                self.run_log.info("__import_operation, err")
                 continue
             if ret_object_op == None:
                 break
@@ -553,7 +571,7 @@ class import_db():
 
             ret_result, ret_op_data = self.get_object(operation_id)
             if not ret_result:
-                # self.run_log.info("syn_data_to_db, err")
+                self.run_log.info("syn_data_to_db, err")
                 continue
 
             block_num = ret_op_data['block_num']
@@ -563,7 +581,7 @@ class import_db():
 
             ret_result, ret_block_data = self.get_block(block_num)
             if not ret_result:
-                # self.run_log.info('__import_operation err')
+                self.run_log.info('__import_operation err')
                 continue
 
             date_time = ret_block_data['timestamp']
@@ -581,12 +599,44 @@ class import_db():
                 'datetime': date_time, 'sequence': sequence, 'trx_id': hash160, 'id_index': i + start_index,
                 'timestamp': timestamp
             }
-            if not self.__db_syn.find_one({'oh': id}):
-                self.__db_syn.insert(db_data)
-            else:
-                self.__db_syn.update({'oh': id}, {'$set': db_data})
-            if (i + start_index + 1) >= margin:
-                margin += step
+            # if not self.__db_syn.find_one({'oh': id}):
+            ret_insert_syn.append(db_data)
+                # self.__db_syn.insert(db_data)
+            # else:
+            #     self.__db_syn.update({'oh': id}, {'$set': db_data})
+            #     up_count += 1
+
+            ret_result, ret_account_data = self.get_account(account_id)
+            if not ret_result:
+                self.run_log.info("__import_operation, err")
+                continue
+            account_name = ret_account_data[0]['name']
+
+            ret_result, ret_block_data = self.get_block_header(block_num)
+            if not ret_result:
+                self.run_log.info('__import_operation err')
+                continue
+
+            date_time = ret_block_data['timestamp']
+
+            op_type = ret_op_data['op'][0]
+            trx_in_block = ret_op_data['trx_in_block']
+            op_in_trx = ret_op_data['op_in_trx']
+
+            db_data_ops = {
+                'oh': id_, 'ath': operation_id, 'block_num': block_num, 'trx_in_block': trx_in_block,
+                'op_in_trx': op_in_trx, 'datetime': date_time, 'account_id': account_id,
+                'op_type': op_type, 'account_name': account_name
+            }
+            ret_insert_ops .append(db_data_ops)
+
+            # if (i + start_index + 1) >= margin:
+            #     margin += step
+        if len(ret_insert_syn) > 0:
+            self.__db_syn.insert_many(ret_insert_syn)
+        if len(ret_insert_ops) > 0:
+            self.__db_ops.insert_many(ret_insert_ops)
+        # print("update syndb count:{}".format(up_count))
         return True
 
     def __import_witnesses(self):
@@ -685,20 +735,26 @@ class import_db():
         while True:
             try:
                 self.__import_asset()
+                print("asset finish")
                 time.sleep(3)
                 self.__import_holders()
                 time.sleep(3)
+                print("holder finish")
                 self.__import_market()
+                # time.sleep(3)
+                # self.__import_referrers()
+                # time.sleep(3)
+                # self.__import_operation(self.__id_index)
                 time.sleep(3)
-                self.__import_referrers()
-                time.sleep(3)
-                self.__import_operation(self.__id_index)
-                time.sleep(3)
+                print("market finish")
                 self.__import_witnesses()
                 time.sleep(3)
+                print("witnesses finish")
                 self.__import_committee()
                 time.sleep(3)
+                print("committee finish")
                 self.syn_last_data()
+                print("syndb finish")
             except:
                 continue
             if self.__get_msg_id() > 10000000:
