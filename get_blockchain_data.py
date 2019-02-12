@@ -267,7 +267,7 @@ class import_db():
         for i in range(len(ret_list_account)):
             all_asset.append(ret_list_account[i])
 
-        # 获取asset的symbol
+        # get asset symbol
         count, ret_asset_db_data = self.get_assert()
         asset_symbol = []
         for i in range(count):
@@ -282,9 +282,9 @@ class import_db():
             id_ = all_asset[i]['id']
 
             volume = 0
-            price = 0 #新的block数据里面改版为0
+            price = 0 #new block data is 0
 
-            # todo:asset_id要与asset_id对应
+            # todo:
             db_data = {
                 'asset_symbol': asset_symbol[i][0], 'symbol': symbol, 'asset_id': id_, "price": price,
                 'volume': volume, 'aid': asset_symbol[i][1]
@@ -345,7 +345,7 @@ class import_db():
                 'account_name': account_name,
                 'amount': float(ret_balances['result'][0]['amount']),
                 'vote_account': ret_get_objects1['result'][0]['options']['voting_account'],
-                'holder_reserve': 0.0  # todo:这个字段需要后续测试
+                'holder_reserve': 0.0  # todo:to be tested
             }
             if not self.__db_holders.find_one({'account_name': account_name}):
                 self.__db_holders.insert(db_data)
@@ -549,7 +549,7 @@ class import_db():
         return True, ret_data
 
     def __syn_data_to_db(self, start_index):
-        # 同步数据至数据库
+        # syn db
         step = 200
         # margin = start_index + step
         ret_insert_syn = []
@@ -731,7 +731,7 @@ class import_db():
 
     def run(self):
         # time.sleep(30)
-        # 写入holder资产
+        # holder asset
         while True:
             try:
                 self.__import_asset()

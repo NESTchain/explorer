@@ -3,10 +3,10 @@ import logging
 
 
 class LogClass():
-    '''创建日志类，
-    filepath:路径
-    filename:文件名
-    level：日志级别
+    '''
+    filepath:path
+    filename:file name
+    level:log level
     '''
     def __init__(self, filpath, filename,level_info):
         try:

@@ -221,8 +221,8 @@ def get_operation_full(operation_id):
     return get_operation(operation_id)
 
 
-# todo:这个函数未来可能需要，目前不做修改，修改见注释代码，根据"http://95.216.32.252:5000/get_single_operation?operation_id=1.11.0"
-# 读到的结果如下： [{'account_history': {'account': '1.2.1090', 'id': '2.9.0', 'next': '2.9.0', 'operation_id': '1.11.0', 'sequence': 1},
+# todo:"http://95.216.32.252:5000/get_single_operation?operation_id=1.11.0"
+# result:[{'account_history': {'account': '1.2.1090', 'id': '2.9.0', 'next': '2.9.0', 'operation_id': '1.11.0', 'sequence': 1},
 # 'additional_data': {'fee_data': {'amount': 0, 'asset': '1.3.0'}, 'fill_data': {'account_id': '1.2.0', 'fill_price': '0.00000000000000000',
 # 'is_maker': True, 'order_id': '0.0.0', 'pays_amount': 0, 'pays_asset_id': '1.3.0', 'receives_amount': 0, 'receives_asset_id': '1.3.0'},
 # 'transfer_data': {'amount': 0, 'asset': '1.3.0', 'from': '1.2.0', 'to': '1.2.0'}},
@@ -859,7 +859,7 @@ def get_daily_volume_dex_dates():
 
 
 def get_daily_volume_dex_data():
-    # todo:需要按时间排序，现在没有时间这个字段
+    # todo:sort by timestamp
     count, ret_asset_db = get_assert()
     if count <= 0:
         return True, []
@@ -980,7 +980,7 @@ def get_additional_data(account_id, account_info):
     op_info = account_info[1]
     fee_data = dict(amount=op_info["fee"]["amount"], asset=op_info["fee"]["asset_id"])
 
-    # todo :hardcode 需要改进
+    # todo :hardcode to be improve
     account_id = account_id
     if "order" in op_info:
         order_id = op_info["order"]
@@ -1012,7 +1012,7 @@ def get_additional_data(account_id, account_info):
                      receives_amount=receives_amount, receives_asset_id=receives_asset_id)
     # transfer_data = {'amount': op_info['amount']['amount'], 'asset': op_info['amount']['asset_id'],
     #                  'from': op_info['from'], 'to': op_info['to']}
-    transfer_data = {"amount": 0, "asset": "1.3.0", "from": "1.2.0", "to": "1.2.0"}  # todo:从explorer返回的数据像硬编码，后面再改
+    transfer_data = {"amount": 0, "asset": "1.3.0", "from": "1.2.0", "to": "1.2.0"}  # todo: to be fix
 
     addtional_data = {"fee_data": fee_data, "fill_data": fill_data, "transfer_data": transfer_data}
     return True, addtional_data
@@ -1080,7 +1080,7 @@ def get_account_history_elastic(size, start):
 
 
 def get_account_history_elastic2(from_date, to_date, type, agg_field, size):
-    # 取size 个
+    # get size objs
     # print("get_account_history_elastic2, stime:{}".format(time.time()))
     days = from_date.split('-')[1]
     period = days[-1]

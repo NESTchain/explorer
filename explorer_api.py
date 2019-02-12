@@ -75,7 +75,7 @@ def top_holders():
 
 
 @app.route('/api/top_markets', methods=['GET', 'POST'])
-#todo :这个接口可以考虑删除
+#todo :to be deleted
 def top_markets():
     header_origin = request.headers['Referer']
     count, ret_market_data = impl_handle.get_market()
@@ -361,7 +361,7 @@ def get_block():
 
 
 @app.route('/api/get_ticker', methods=['GET', 'POST'])
-# todo:未来删除这个接口
+# todo:to be deleted
 def get_ticker():
     header_origin = request.headers['Referer']
     base = request.args.get('base')
@@ -496,7 +496,7 @@ def get_most_active_markets():
 
 
 @app.route('/api/get_order_book', methods=['GET', 'POST'])
-#todo 这个接口要删除
+#todo to be deleted
 def get_order_book():
     header_origin = request.headers['Referer']
     # base = request.args.get('base')
@@ -512,7 +512,7 @@ def get_order_book():
 
 
 @app.route('/api/get_margin_positions', methods=['GET', 'POST'])
-#todo 这个接口要删除
+#todo to be deleted
 def get_margin_positions():
     header_origin = request.headers['Referer']
     # account_id = request.args.get('account_id')
@@ -550,7 +550,7 @@ def get_committee_members():
 
 
 @app.route('/api/market_chart_dates', methods=['GET', 'POST'])
-#todo 可以删除
+#todo to be deleted
 def get_market_chart_dates():
     header_origin = request.headers['Referer']
     # ret_result, ret_data = impl_handle.get_market_chart_dates()
@@ -563,7 +563,7 @@ def get_market_chart_dates():
 
 
 @app.route('/api/market_chart_data', methods=['GET', 'POST'])
-#todo 暂时保留
+#todo to be deleted
 def get_market_chart_data():
     header_origin = request.headers['Referer']
     base = request.args.get('base')
@@ -710,7 +710,7 @@ def get_account_history_pager_elastic():
 
 
 @app.route('/api/get_limit_orders', methods=['GET', 'POST'])
-#todo 可以删除
+#todo to be deleted
 def get_limit_orders():
     header_origin = request.headers['Referer']
     # base = request.args.get('base')
@@ -725,7 +725,7 @@ def get_limit_orders():
 
 
 @app.route('/api/get_call_orders', methods=['GET', 'POST'])
-#todo 可以删除
+#todo to be deleted
 def get_call_orders():
     header_origin = request.headers['Referer']
     # asset_id = request.args.get('asset_id')
@@ -739,7 +739,7 @@ def get_call_orders():
 
 
 @app.route('/api/get_settle_orders', methods=['GET', 'POST'])
-#todo 可以删除
+#todo to be deleted
 def get_settle_orders():
     header_origin = request.headers['Referer']
     # base = request.args.get('base')
@@ -753,7 +753,7 @@ def get_settle_orders():
 
 
 @app.route('/api/get_dex_total_volume', methods=['GET', 'POST'])
-#todo 可以删除
+#todo to be deleted
 def get_dex_total_volume():
     header_origin = request.headers['Referer']
     # ret_result, ret_data = impl_handle.get_dex_total_volume()
@@ -830,7 +830,7 @@ def get_all_referrers():
 
 
 @app.route('/api/get_grouped_limit_orders', methods=['GET', 'POST'])
-#todo 这个接口删除
+#todo to be deleted
 def get_grouped_limit_orders():
     header_origin = request.headers['Referer']
     # base = request.args.get('base')
@@ -872,11 +872,11 @@ def get_account_history_elastic2():
     agg_field = request.args.get('agg_field')
     size = int(request.args.get('size'))
 
-    if agg_field == 'operation_type':# 按op-type来获取op
+    if agg_field == 'operation_type':# op-type op
         ret_result, ret_data = impl_handle.get_account_history_elastic2(from_date, to_date, type, agg_field, size)
-    if agg_field == 'block_data.block_num': # todo 暂时以每个block中op最多来统计
+    if agg_field == 'block_data.block_num': # todo block op
         ret_result, ret_data = impl_handle.get_account_history_elastic3(from_date, to_date, type, agg_field, size)
-    if agg_field == 'block_data.trx_id.keyword':# 根据每个交易的transactin中op最多数
+    if agg_field == 'block_data.trx_id.keyword':#  transactin ops
         ret_result, ret_data = impl_handle.get_account_history_elastic4(from_date, to_date, type, agg_field, size)
     if not ret_result:
         ret_data = []
