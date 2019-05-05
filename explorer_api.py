@@ -894,6 +894,37 @@ def get_trx():
     size = int(request.args.get('size'))
     sort = request.args.get('sort')
     ret_result, ret_data = impl_handle.get_trx(trx, size)
+    rst = make_response(jsonify(ret_data))
+    rst.headers['Content-Type'] = 'application/json'
+    rst.headers['Access-Control-Allow-Origin'] = header_origin
+    return rst
+
+
+@app.route('/api/import_key', methods=['GET', 'POST'])
+def import_key():
+    header_origin = request.headers['Referer']
+
+    account_name = request.args.get('account_name')
+    priv = request.args.get('priv')
+    pub = request.args.get('pub')
+
+    key_pair = {'priv':priv, 'pub':pub}
+    ret_result, ret_data = impl_handle.import_memo_key(account_name, key_pair)
+
+    rst = make_response(jsonify(ret_data))
+    rst.headers['Content-Type'] = 'application/json'
+    rst.headers['Access-Control-Allow-Origin'] = header_origin
+    return rst
+
+
+@app.route('/api/decrypt_msg', methods=['GET', 'POST'])
+def decrypt_message():
+    header_origin = request.headers['Referer']
+
+    # account_name = request.args.get('account_name')
+    operation_id = request.args.get('operation_id')
+
+    ret_result, ret_data = impl_handle.decrypt_memo_msg(operation_id)
 
     rst = make_response(jsonify(ret_data))
     rst.headers['Content-Type'] = 'application/json'

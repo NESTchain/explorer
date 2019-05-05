@@ -2,7 +2,9 @@ import json
 import os
 from pymongo import MongoClient
 from datetime import datetime, timedelta
-import time
+
+from bitsharesbase.memo import (decode_memo)
+from bitsharesbase.account import PublicKey, PrivateKey
 
 MONGO_HOST = os.environ.get('MONGO_HOST', '127.0.0.1')
 MONGO_PORT = os.environ.get('MONGO_PORT', 27017)
@@ -13,6 +15,12 @@ from open_explorer_api.web_request import client
 Database = 'database'
 Asset = 'asset'
 History = 'history'
+
+
+def decrypt_msg(priv_key, pub_key, nonce, msg):
+    dec = decode_memo(PrivateKey(priv_key), PublicKey(pub_key, prefix="NEST"),
+                      nonce, msg)
+    return dec
 
 
 def get_header():
@@ -1284,3 +1292,86 @@ def get_trx(trx_id, size):
             history_elastic.append(dict_tmp)
     ret_trx_sorted = history_elastic[:min(size, len(history_elastic))]
     return True, ret_trx_sorted
+
+
+def import_memo_key(account_name, key_pair):
+    db_client = MongoClient(MONGO_URL + '/?authSource=admin', MONGO_PORT, connect=False)
+    table = 'explorer'
+    collection = 'memo_keys'
+    db = db_client[table][collection]
+
+    data = key_pair
+    count = db.find({'account_name': account_name}).count()
+
+    result, id = get_account_id(account_name)
+    if not result:
+        return False, []
+
+    data['account_id'] = id
+    ret = ''
+    if count <= 0:
+        data['account_name'] = account_name
+        db.insert_one(data)
+        ret = {'msg': 'import success'}
+        return True, ret
+    else:
+        data['account_name'] = account_name
+        db.update({'account_name': account_name}, {'$set': data})
+        ret = {'msg': 'update success'}
+    return True, ret
+
+
+def decrypt_memo_msg(operation_id):
+    # get_op
+    result, op = get_operation(operation_id)
+    if not result:
+        return False, []
+
+    db_client = MongoClient(MONGO_URL + '/?authSource=admin', MONGO_PORT, connect=False)
+    table = 'explorer'
+    collection = 'memo_keys'
+    db = db_client[table][collection]
+
+    from_id = op['op'][1]['from']
+    to_id = op['op'][1]['to']
+    memo = op['op'][1]['memo']
+
+    from_key = memo['from']
+    to_key = memo['to']
+    nonce = int(memo['nonce'])
+    msg = memo['message']
+
+    if nonce == 0:
+        ret_data = {'msg': msg}
+        return True, ret_data
+
+    count1 = db.find({'account_id': from_id}).count()
+    count2 = db.find({'account_id': to_id}).count()
+
+    account_id = ''
+    count = 0
+    if count1 > 0:
+        account_id = from_id
+        count = count1
+    elif count2 > 0:
+        account_id = to_id
+        count = count2
+    else:
+        return True, {'msg': msg}
+
+    ret_mongo_data = list(db.find({'account_id': account_id}).limit(count))
+    if count > 0:
+        priv_key = ret_mongo_data[0]['priv']
+        pub_key = (from_key == ret_mongo_data[0]['pub']) and to_key or from_key
+
+        # start to decrypt
+        plain_msg = decrypt_msg(priv_key, pub_key, nonce, msg)
+        ret_data = {'msg': plain_msg}
+        return True, ret_data
+    else:
+        return False, []
+
+
+
+
+
